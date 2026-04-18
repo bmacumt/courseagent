@@ -1,0 +1,229 @@
+"""Pydantic request/response schemas for all API endpoints."""
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
+# --- Auth ---
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    role: str
+    real_name: str | None = None
+    student_id: str | None = None
+    class_name: str | None = None
+    created_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+# --- Admin: User management ---
+
+class CreateUserRequest(BaseModel):
+    username: str
+    password: str
+    role: str = "student"
+    real_name: str | None = None
+    student_id: str | None = None
+    class_name: str | None = None
+
+class UpdateUserRequest(BaseModel):
+    real_name: str | None = None
+    class_name: str | None = None
+    password: str | None = None
+
+class BatchStudentItem(BaseModel):
+    username: str
+    password: str
+    real_name: str
+    student_id: str
+    class_name: str
+
+class BatchStudentRequest(BaseModel):
+    students: list[BatchStudentItem]
+
+class BatchImportResult(BaseModel):
+    success_count: int
+    failed: list[dict]
+    created_ids: list[int]
+
+class SystemStats(BaseModel):
+    total_users: int
+    total_documents: int
+    total_assignments: int
+    total_submissions: int
+
+
+# --- Admin: Settings ---
+
+class SettingItem(BaseModel):
+    id: int
+    key: str
+    value: str
+    category: str
+    updated_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+class SettingUpdate(BaseModel):
+    value: str
+
+
+# --- Teacher: Knowledge ---
+
+class DocumentResponse(BaseModel):
+    id: int
+    doc_uuid: str
+    filename: str
+    title: str
+    doc_type: str
+    owner_id: int
+    chunk_count: int
+    uploaded_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+# --- Teacher: Assignments ---
+
+class GradingCriteriaInput(BaseModel):
+    """Simplified criteria input for assignment creation."""
+    dimensions: list[dict] | None = None  # [{name, label, weight, description}]
+    reference_answer: str | None = None
+    extra_instructions: str | None = None
+
+class CreateAssignmentRequest(BaseModel):
+    title: str
+    description: str
+    question: str
+    reference_answer: str | None = None
+    grading_criteria: GradingCriteriaInput | None = None
+    deadline: datetime | None = None
+
+class UpdateAssignmentRequest(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    question: str | None = None
+    reference_answer: str | None = None
+    grading_criteria: GradingCriteriaInput | None = None
+    deadline: datetime | None = None
+
+class AssignmentResponse(BaseModel):
+    id: int
+    teacher_id: int
+    title: str
+    description: str
+    question: str
+    reference_answer: str | None = None
+    grading_criteria: str  # JSON string
+    deadline: datetime | None = None
+    is_published: bool
+    created_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+class AssignmentSummary(BaseModel):
+    id: int
+    title: str
+    is_published: bool
+    deadline: datetime | None = None
+    created_at: datetime | None = None
+    submission_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+# --- Student: Assignments view ---
+
+class AssignmentForStudent(BaseModel):
+    id: int
+    title: str
+    description: str
+    question: str
+    deadline: datetime | None = None
+    teacher_name: str | None = None
+    has_submitted: bool = False
+
+class AssignmentDetail(BaseModel):
+    id: int
+    title: str
+    description: str
+    question: str
+    reference_answer: str | None = None
+    deadline: datetime | None = None
+    teacher_name: str | None = None
+
+
+# --- Student: Submissions ---
+
+class SubmitAnswer(BaseModel):
+    content: str
+
+class SubmissionResponse(BaseModel):
+    id: int
+    assignment_id: int
+    student_id: int
+    content: str
+    status: str
+    submitted_at: datetime | None = None
+    updated_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+class SubmissionSummary(BaseModel):
+    id: int
+    assignment_id: int
+    student_name: str | None = None
+    student_real_name: str | None = None
+    status: str
+    submitted_at: datetime | None = None
+    total_score: float | None = None
+    has_attachment: bool = False
+
+
+# --- Reports ---
+
+class DimensionScoreItem(BaseModel):
+    name: str
+    label: str
+    score: int
+    weight: float
+    weighted_score: float
+    comment: str
+
+class ReportResponse(BaseModel):
+    id: int
+    submission_id: int
+    total_score: float
+    max_score: int
+    dimension_scores: list[DimensionScoreItem]
+    feedback: str
+    references: list[str]
+    regulations_found: list[str]
+    regulations_cited: list[str]
+    created_at: datetime | None = None
+
+
+# --- Student: QA ---
+
+class QARequest(BaseModel):
+    question: str
+
+class QASourceItem(BaseModel):
+    index: int
+    text: str
+    source_name: str | None = None
+    chunk_index: int | None = None
+
+class QAResponse(BaseModel):
+    answer: str
+    sources: list[QASourceItem]
