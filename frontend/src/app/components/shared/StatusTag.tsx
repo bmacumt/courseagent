@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { SubmissionStatus } from '../../data/mockData';
+import type { SubmissionStatus } from '../../api/types';
 
 const statusConfig: Record<SubmissionStatus, { bg: string; color: string; label: string }> = {
   submitted: { bg: '#F0F2F5', color: '#7F8C8D', label: '已提交' },

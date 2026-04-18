@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Save, CheckCircle, Edit2, X } from 'lucide-react';
-import { mockSettings, Setting, SettingCategory } from '../../data/mockData';
+import * as adminApi from '../../api/admin';
+import type { SettingItem } from '../../api/types';
+
+type SettingCategory = 'llm' | 'embedding' | 'reranker' | 'mineru' | 'general';
 
 const categories: { key: SettingCategory; label: string; desc: string }[] = [
   { key: 'llm', label: 'LLM 配置', desc: '大语言模型接口配置' },
@@ -31,41 +34,64 @@ const keyLabels: Record<string, string> = {
 
 export default function SystemSettings() {
   const [activeTab, setActiveTab] = useState<SettingCategory>('llm');
-  const [settings, setSettings] = useState<Record<string, Setting[]>>(() => JSON.parse(JSON.stringify(mockSettings)));
+  const [settings, setSettings] = useState<Record<string, SettingItem[]>>({});
+  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [editValues, setEditValues] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState<Record<string, boolean>>({});
 
+  const loadSettings = useCallback(async () => {
+    try {
+      const data = await adminApi.getSettings();
+      setSettings(data);
+    } catch (e) {
+      console.error('Failed to load settings:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadSettings(); }, [loadSettings]);
+
   const currentSettings = settings[activeTab] || [];
 
-  const startEdit = (s: Setting) => {
+  const startEdit = (s: SettingItem) => {
     setEditing(e => ({ ...e, [s.key]: true }));
     setEditValues(v => ({ ...v, [s.key]: s.value }));
   };
 
-  const cancelEdit = (s: Setting) => {
+  const cancelEdit = (s: SettingItem) => {
     setEditing(e => ({ ...e, [s.key]: false }));
   };
 
-  const saveItem = (s: Setting) => {
+  const saveItem = async (s: SettingItem) => {
     const newVal = editValues[s.key];
-    setSettings(prev => ({
-      ...prev,
-      [activeTab]: prev[activeTab].map(item =>
-        item.key === s.key ? { ...item, value: newVal, updated_at: new Date().toISOString() } : item
-      ),
-    }));
-    setEditing(e => ({ ...e, [s.key]: false }));
-    setSaved(sv => ({ ...sv, [s.key]: true }));
-    setTimeout(() => setSaved(sv => ({ ...sv, [s.key]: false })), 2000);
+    try {
+      const updated = await adminApi.updateSetting(s.key, newVal);
+      setSettings(prev => ({
+        ...prev,
+        [activeTab]: (prev[activeTab] || []).map(item =>
+          item.key === s.key ? updated : item
+        ),
+      }));
+      setEditing(e => ({ ...e, [s.key]: false }));
+      setSaved(sv => ({ ...sv, [s.key]: true }));
+      setTimeout(() => setSaved(sv => ({ ...sv, [s.key]: false })), 2000);
+    } catch (e) {
+      console.error('Failed to save setting:', e);
+      alert('保存失败');
+    }
   };
 
   const isSecret = (key: string) => key.includes('key') || key.includes('password');
 
-  const formatDate = (d: string) => {
+  const formatDate = (d: string | null) => {
+    if (!d) return '—';
     const date = new Date(d);
     return `${date.toLocaleDateString('zh-CN')} ${date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`;
   };
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 48, color: '#A4B0BE' }}>加载中...</div>;
 
   return (
     <div>
@@ -130,7 +156,7 @@ export default function SystemSettings() {
                     {editing[s.key] ? (
                       <>
                         <input
-                          type={isSecret(s.key) ? 'text' : 'text'}
+                          type="text"
                           value={editValues[s.key]}
                           onChange={e => setEditValues(v => ({ ...v, [s.key]: e.target.value }))}
                           style={{
@@ -177,6 +203,9 @@ export default function SystemSettings() {
                   </div>
                 </div>
               ))}
+              {currentSettings.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 32, color: '#A4B0BE', fontSize: 13 }}>暂无配置项</div>
+              )}
             </div>
           </div>
 

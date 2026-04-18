@@ -1,30 +1,62 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { RefreshCw, Download, Paperclip, ExternalLink, Info } from 'lucide-react';
-import { studentSubmissionsList, SubmissionStatus } from '../../data/mockData';
+import * as studentApi from '../../api/student';
+import type { SubmissionSummary } from '../../api/types';
 import { StatusTag } from '../../components/shared/StatusTag';
 
 export default function MySubmissions() {
   const navigate = useNavigate();
-  const [submissions, setSubmissions] = useState(studentSubmissionsList);
+  const [submissions, setSubmissions] = useState<SubmissionSummary[]>([]);
+  const [loading, setLoading] = useState(true);
   const [pollingInfo, setPollingInfo] = useState('');
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
-  // Simulate polling for grading submissions
+  const fetchSubmissions = useCallback(async () => {
+    try {
+      const data = await studentApi.getStudentSubmissions();
+      setSubmissions(data);
+      setLastRefresh(new Date());
+    } catch (err) {
+      console.error('获取提交列表失败:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSubmissions()
+      .catch(err => {
+        console.error('获取提交列表失败:', err);
+        alert('获取提交列表失败，请稍后重试');
+      })
+      .finally(() => setLoading(false));
+  }, [fetchSubmissions]);
+
+  // Polling for grading submissions
   useEffect(() => {
     const gradingItems = submissions.filter(s => s.status === 'grading');
-    if (gradingItems.length === 0) return;
+    if (gradingItems.length === 0) {
+      setPollingInfo('');
+      return;
+    }
 
     setPollingInfo('检测到评分中的记录，每 5 秒自动刷新...');
     const interval = setInterval(() => {
-      setLastRefresh(new Date());
-      // In a real app, this would call the API and update status
+      fetchSubmissions();
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [submissions]);
+  }, [submissions, fetchSubmissions]);
 
-  const formatTime = (d: string) => {
+  const handleRefresh = () => {
+    fetchSubmissions();
+  };
+
+  const handleDownloadAttachment = (submissionId: number) => {
+    window.open(studentApi.getAttachmentUrl(submissionId));
+  };
+
+  const formatTime = (d: string | null) => {
+    if (!d) return '—';
     const date = new Date(d);
     return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
@@ -43,6 +75,10 @@ export default function MySubmissions() {
     return '#FFEAEA';
   };
 
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: 64, color: '#A4B0BE', fontSize: 14 }}>加载中...</div>;
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -51,7 +87,7 @@ export default function MySubmissions() {
           <p style={{ fontSize: 13, color: '#7F8C8D' }}>查看所有提交记录和评分结果</p>
         </div>
         <button
-          onClick={() => setLastRefresh(new Date())}
+          onClick={handleRefresh}
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', border: '1px solid #E8ECF0', borderRadius: 6, background: '#FFFFFF', color: '#2C3E50', cursor: 'pointer', fontSize: 13 }}
         >
           <RefreshCw size={14} /> 刷新
@@ -121,13 +157,16 @@ export default function MySubmissions() {
               {/* Actions */}
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                 {sub.has_attachment && (
-                  <button style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', border: '1px solid #E8ECF0', borderRadius: 6, background: '#FFFFFF', color: '#7F8C8D', cursor: 'pointer', fontSize: 12 }}>
+                  <button
+                    onClick={() => handleDownloadAttachment(sub.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px', border: '1px solid #E8ECF0', borderRadius: 6, background: '#FFFFFF', color: '#7F8C8D', cursor: 'pointer', fontSize: 12 }}
+                  >
                     <Download size={13} /> 附件
                   </button>
                 )}
-                {sub.status === 'graded' && (
+                {sub.status === 'graded' && sub.report_id && (
                   <button
-                    onClick={() => navigate(`/student/reports/${sub.id}`)}
+                    onClick={() => navigate(`/student/reports/${sub.report_id}`)}
                     style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 14px', border: 'none', borderRadius: 6, background: '#4A6FA5', color: '#FFFFFF', cursor: 'pointer', fontSize: 13 }}
                   >
                     <ExternalLink size={13} /> 查看报告

@@ -18,8 +18,8 @@ import StudentReport from './pages/student/StudentReport';
 import QA from './pages/student/QA';
 
 function RequireAuth({ children }: { children: ReactNode }) {
-  const stored = localStorage.getItem('tunnel_auth_user');
-  if (!stored) return <Navigate to="/login" replace />;
+  const token = localStorage.getItem('tunnel_auth_token');
+  if (!token) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 

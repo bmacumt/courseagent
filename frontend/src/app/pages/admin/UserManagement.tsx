@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, Edit2, Trash2, Upload, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
-import { mockUsers, User, Role } from '../../data/mockData';
+import * as adminApi from '../../api/admin';
+import type { UserResponse, Role } from '../../api/types';
 import { ConfirmDialog, Modal } from '../../components/shared/ConfirmDialog';
 import { RoleTag } from '../../components/shared/StatusTag';
 
@@ -37,20 +38,34 @@ const inputStyle = {
 };
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<UserResponse[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<Role | 'all'>('all');
   const [classFilter, setClassFilter] = useState('');
   const [page, setPage] = useState(1);
 
   const [editModal, setEditModal] = useState(false);
-  const [editUser, setEditUser] = useState<User | null>(null);
+  const [editUser, setEditUser] = useState<UserResponse | null>(null);
   const [form, setForm] = useState<UserFormData>(emptyForm);
-  const [deleteConfirm, setDeleteConfirm] = useState<User | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<UserResponse | null>(null);
   const [batchModal, setBatchModal] = useState(false);
   const [csvText, setCsvText] = useState('');
   const [batchResult, setBatchResult] = useState<{ success: number; failed: { row: number; reason: string }[] } | null>(null);
   const [formError, setFormError] = useState('');
+
+  const loadUsers = useCallback(async () => {
+    try {
+      const data = await adminApi.getUsers();
+      setUsers(data);
+    } catch (e) {
+      console.error('Failed to load users:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadUsers(); }, [loadUsers]);
 
   const classes = Array.from(new Set(users.filter(u => u.class_name).map(u => u.class_name!)));
 
@@ -70,55 +85,76 @@ export default function UserManagement() {
     setFormError('');
     setEditModal(true);
   };
-  const openEdit = (u: User) => {
+  const openEdit = (u: UserResponse) => {
     setEditUser(u);
-    setForm({ username: u.username, password: '', role: u.role, real_name: u.real_name || '', student_id: u.student_id || '', class_name: u.class_name || '' });
+    setForm({ username: u.username, password: '', role: u.role as Role, real_name: u.real_name || '', student_id: u.student_id || '', class_name: u.class_name || '' });
     setFormError('');
     setEditModal(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.username) { setFormError('用户名不能为空'); return; }
     if (!editUser && !form.password) { setFormError('密码不能为空'); return; }
-    if (editUser) {
-      setUsers(users.map(u => u.id === editUser.id ? { ...u, real_name: form.real_name, class_name: form.class_name, student_id: form.student_id } : u));
-    } else {
-      const existing = users.find(u => u.username === form.username);
-      if (existing) { setFormError('用户名已存在'); return; }
-      const newUser: User = {
-        id: Date.now(), username: form.username, role: form.role,
-        real_name: form.real_name || null, student_id: form.student_id || null,
-        class_name: form.class_name || null, created_at: new Date().toISOString(),
-      };
-      setUsers([newUser, ...users]);
-    }
-    setEditModal(false);
-  };
 
-  const handleDelete = (u: User) => {
-    if (u.username === 'admin') return;
-    setUsers(users.filter(x => x.id !== u.id));
-    setDeleteConfirm(null);
-  };
-
-  const handleBatchImport = () => {
-    const lines = csvText.trim().split('\n').filter(l => l.trim());
-    const failed: { row: number; reason: string }[] = [];
-    const toAdd: User[] = [];
-    lines.forEach((line, i) => {
-      const parts = line.split(',').map(p => p.trim());
-      if (parts.length < 3) { failed.push({ row: i + 1, reason: '字段数量不足，至少需要：用户名,密码,姓名' }); return; }
-      const [uname, , realName, studentId, className] = parts;
-      if (users.find(u => u.username === uname) || toAdd.find(u => u.username === uname)) {
-        failed.push({ row: i + 1, reason: `用户名 ${uname} 已存在` }); return;
+    try {
+      if (editUser) {
+        await adminApi.updateUser(editUser.id, {
+          real_name: form.real_name || undefined,
+          class_name: form.class_name || undefined,
+          password: form.password || undefined,
+        });
+      } else {
+        await adminApi.createUser({
+          username: form.username,
+          password: form.password,
+          role: form.role,
+          real_name: form.real_name || null,
+          student_id: form.student_id || null,
+          class_name: form.class_name || null,
+        });
       }
-      toAdd.push({ id: Date.now() + i, username: uname, role: 'student', real_name: realName || null, student_id: studentId || null, class_name: className || null, created_at: new Date().toISOString() });
-    });
-    setUsers(prev => [...toAdd, ...prev]);
-    setBatchResult({ success: toAdd.length, failed });
+      setEditModal(false);
+      loadUsers();
+    } catch (e: any) {
+      setFormError(e.response?.data?.detail || '操作失败');
+    }
   };
 
-  const formatDate = (d: string) => new Date(d).toLocaleDateString('zh-CN');
+  const handleDelete = async (u: UserResponse) => {
+    try {
+      await adminApi.deleteUser(u.id);
+      setDeleteConfirm(null);
+      loadUsers();
+    } catch (e: any) {
+      alert(e.response?.data?.detail || '删除失败');
+    }
+  };
+
+  const handleBatchImport = async () => {
+    const lines = csvText.trim().split('\n').filter(l => l.trim());
+    const students = lines.map((line, i) => {
+      const parts = line.split(',').map(p => p.trim());
+      return {
+        username: parts[0] || '',
+        password: parts[1] || '123456',
+        real_name: parts[2] || `学生${i + 1}`,
+        student_id: parts[3] || `S${String(i + 1).padStart(3, '0')}`,
+        class_name: parts[4] || '未分班',
+      };
+    });
+
+    try {
+      const result = await adminApi.batchImportStudents(students);
+      setBatchResult({ success: result.success_count, failed: result.failed.map(f => ({ row: f.index + 1, reason: f.reason })) });
+      loadUsers();
+    } catch (e: any) {
+      alert('批量导入失败: ' + (e.response?.data?.detail || e.message));
+    }
+  };
+
+  const formatDate = (d: string | null) => d ? new Date(d).toLocaleDateString('zh-CN') : '—';
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 48, color: '#A4B0BE' }}>加载中...</div>;
 
   return (
     <div>

@@ -1,7 +1,8 @@
-import { ElementType } from 'react';
+import { ElementType, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Database, ClipboardList, FileText, Users, ChevronRight, Clock } from 'lucide-react';
-import { mockDocuments, mockAssignments } from '../../data/mockData';
+import * as teacherApi from '../../api/teacher';
+import type { DocumentResponse, AssignmentSummary } from '../../api/types';
 import { PublishTag } from '../../components/shared/StatusTag';
 
 function StatCard({ icon: Icon, label, value, color, sub }: { icon: ElementType; label: string; value: number | string; color: string; sub?: string }) {
@@ -21,11 +22,32 @@ function StatCard({ icon: Icon, label, value, color, sub }: { icon: ElementType;
 
 export default function TeacherDashboard() {
   const navigate = useNavigate();
-  const publishedCount = mockAssignments.filter(a => a.is_published).length;
-  const draftCount = mockAssignments.filter(a => !a.is_published).length;
-  const totalSubmissions = mockAssignments.reduce((sum, a) => sum + a.submission_count, 0);
+  const [documents, setDocuments] = useState<DocumentResponse[]>([]);
+  const [assignments, setAssignments] = useState<AssignmentSummary[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const formatDate = (d: string) => {
+  useEffect(() => {
+    Promise.all([
+      teacherApi.getDocuments(),
+      teacherApi.getAssignments(),
+    ])
+      .then(([docs, assigns]) => {
+        setDocuments(docs);
+        setAssignments(assigns);
+      })
+      .catch(err => {
+        console.error('Failed to load dashboard data:', err);
+        alert('加载仪表盘数据失败');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const publishedCount = assignments.filter(a => a.is_published).length;
+  const draftCount = assignments.filter(a => !a.is_published).length;
+  const totalSubmissions = assignments.reduce((sum, a) => sum + a.submission_count, 0);
+
+  const formatDate = (d: string | null) => {
+    if (!d) return '';
     const date = new Date(d);
     return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
@@ -41,6 +63,10 @@ export default function TeacherDashboard() {
     return `${days} 天后截止`;
   };
 
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: 64, color: '#7F8C8D', fontSize: 15 }}>加载中...</div>;
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
@@ -49,7 +75,7 @@ export default function TeacherDashboard() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16, marginBottom: 28 }}>
-        <StatCard icon={Database} label="知识库文档数" value={mockDocuments.length} color="#6B8F71" sub="已上传处理完成" />
+        <StatCard icon={Database} label="知识库文档数" value={documents.length} color="#6B8F71" sub="已上传处理完成" />
         <StatCard icon={ClipboardList} label="已发布作业" value={publishedCount} color="#4A6FA5" sub={`${draftCount} 份草稿`} />
         <StatCard icon={FileText} label="收到提交总数" value={totalSubmissions} color="#D4A843" sub="所有作业提交汇总" />
         <StatCard icon={Users} label="参与学生数" value={42} color="#7A8F9E" sub="至少提交一次" />
@@ -68,8 +94,8 @@ export default function TeacherDashboard() {
             </button>
           </div>
           <div style={{ padding: '0 20px' }}>
-            {mockAssignments.map((a, i) => (
-              <div key={a.id} style={{ padding: '14px 0', borderBottom: i < mockAssignments.length - 1 ? '1px solid #F7F8FA' : 'none', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            {assignments.map((a, i) => (
+              <div key={a.id} style={{ padding: '14px 0', borderBottom: i < assignments.length - 1 ? '1px solid #F7F8FA' : 'none', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span style={{ fontSize: 14, fontWeight: 500, color: '#2C3E50', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</span>
@@ -109,7 +135,7 @@ export default function TeacherDashboard() {
             </button>
           </div>
           <div style={{ padding: '0 20px' }}>
-            {mockDocuments.map((doc, i) => {
+            {documents.map((doc, i) => {
               const typeLabel: Record<string, { label: string; color: string }> = {
                 specification: { label: '规范', color: '#4A6FA5' },
                 textbook: { label: '教材', color: '#6B8F71' },
@@ -117,7 +143,7 @@ export default function TeacherDashboard() {
               };
               const t = typeLabel[doc.doc_type];
               return (
-                <div key={doc.id} style={{ padding: '12px 0', borderBottom: i < mockDocuments.length - 1 ? '1px solid #F7F8FA' : 'none' }}>
+                <div key={doc.id} style={{ padding: '12px 0', borderBottom: i < documents.length - 1 ? '1px solid #F7F8FA' : 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span style={{ fontSize: 14, fontWeight: 500, color: '#2C3E50', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.title}</span>
                     <span style={{ background: `${t.color}18`, color: t.color, borderRadius: 3, padding: '1px 6px', fontSize: 11, flexShrink: 0 }}>{t.label}</span>

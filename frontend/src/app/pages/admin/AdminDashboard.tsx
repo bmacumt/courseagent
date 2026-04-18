@@ -1,6 +1,7 @@
-import { ElementType } from 'react';
+import { ElementType, useState, useEffect } from 'react';
 import { Users, FileText, ClipboardList, BarChart3, TrendingUp, Activity } from 'lucide-react';
-import { mockAdminStats, mockUsers, mockAssignments, mockSubmissions } from '../../data/mockData';
+import * as adminApi from '../../api/admin';
+import type { SystemStats, UserResponse } from '../../api/types';
 
 function StatCard({ icon: Icon, label, value, color, sub }: {
   icon: ElementType; label: string; value: number | string; color: string; sub?: string;
@@ -27,14 +28,15 @@ function StatCard({ icon: Icon, label, value, color, sub }: {
 }
 
 export default function AdminDashboard() {
-  const stats = mockAdminStats;
-  const recentUsers = mockUsers.slice(0, 5);
-  const submissionsByStatus = {
-    graded: mockSubmissions.filter(s => s.status === 'graded').length,
-    grading: mockSubmissions.filter(s => s.status === 'grading').length,
-    submitted: mockSubmissions.filter(s => s.status === 'submitted').length,
-    failed: mockSubmissions.filter(s => s.status === 'failed').length,
-  };
+  const [stats, setStats] = useState<SystemStats | null>(null);
+  const [recentUsers, setRecentUsers] = useState<UserResponse[]>([]);
+
+  useEffect(() => {
+    adminApi.getStats().then(setStats).catch(console.error);
+    adminApi.getUsers().then(users => setRecentUsers(users.slice(0, 5))).catch(console.error);
+  }, []);
+
+  if (!stats) return <div style={{ textAlign: 'center', padding: 48, color: '#A4B0BE' }}>加载中...</div>;
 
   return (
     <div>
@@ -89,41 +91,19 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Submission Stats */}
+        {/* Submission Stats - simplified since we only have total from stats */}
         <div style={{ background: '#FFFFFF', borderRadius: 10, border: '1px solid #E8ECF0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #F0F2F5', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Activity size={16} color="#4A6FA5" />
-            <span style={{ fontSize: 15, fontWeight: 600, color: '#2C3E50' }}>评分状态分布</span>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#2C3E50' }}>数据概览</span>
           </div>
           <div style={{ padding: 20 }}>
-            {[
-              { label: '已评分', value: submissionsByStatus.graded, total: mockSubmissions.length, color: '#6B9E7A', bg: '#EDFAF2' },
-              { label: 'AI 评分中', value: submissionsByStatus.grading, total: mockSubmissions.length, color: '#4A6FA5', bg: '#EBF3FF' },
-              { label: '已提交待处理', value: submissionsByStatus.submitted, total: mockSubmissions.length, color: '#D4A843', bg: '#FFF8E6' },
-              { label: '评分失败', value: submissionsByStatus.failed, total: mockSubmissions.length, color: '#C46B6B', bg: '#FFEAEA' },
-            ].map((item) => (
-              <div key={item.label} style={{ marginBottom: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, color: '#2C3E50' }}>{item.label}</span>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: item.color }}>{item.value} 份</span>
-                </div>
-                <div style={{ height: 8, background: '#F0F2F5', borderRadius: 4, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%', width: `${(item.value / item.total) * 100}%`,
-                    background: item.color, borderRadius: 4, transition: 'width 0.6s ease',
-                  }} />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ padding: '12px 20px', borderTop: '1px solid #F0F2F5', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <TrendingUp size={14} color="#6B9E7A" />
-            <span style={{ fontSize: 12, color: '#7F8C8D' }}>
-              AI 评分覆盖率 <strong style={{ color: '#6B9E7A' }}>
-                {Math.round((submissionsByStatus.graded / mockSubmissions.length) * 100)}%
-              </strong>
-            </span>
+            <div style={{ fontSize: 14, color: '#7F8C8D', lineHeight: 2 }}>
+              <div>注册用户: <strong style={{ color: '#2C3E50' }}>{stats.total_users}</strong></div>
+              <div>知识库文档: <strong style={{ color: '#2C3E50' }}>{stats.total_documents}</strong></div>
+              <div>作业总数: <strong style={{ color: '#2C3E50' }}>{stats.total_assignments}</strong></div>
+              <div>提交总数: <strong style={{ color: '#2C3E50' }}>{stats.total_submissions}</strong></div>
+            </div>
           </div>
         </div>
       </div>

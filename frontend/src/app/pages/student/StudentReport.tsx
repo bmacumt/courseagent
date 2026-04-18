@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ArrowLeft, BookOpen, Quote, Calendar, Star } from 'lucide-react';
-import { mockReport, studentSubmissionsList } from '../../data/mockData';
+import * as studentApi from '../../api/student';
+import type { ReportResponse } from '../../api/types';
 import { ScoreCircle } from '../../components/shared/ScoreCircle';
 import { DimensionBar } from '../../components/shared/DimensionBar';
 import { MarkdownRenderer } from '../../components/shared/MarkdownRenderer';
@@ -8,11 +10,25 @@ import { MarkdownRenderer } from '../../components/shared/MarkdownRenderer';
 export default function StudentReport() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const submissionId = parseInt(id || '1');
-  const submission = studentSubmissionsList.find(s => s.id === submissionId) || studentSubmissionsList[0];
-  const report = mockReport;
+  const reportId = parseInt(id || '1');
 
-  const formatTime = (d: string) => new Date(d).toLocaleString('zh-CN');
+  const [report, setReport] = useState<ReportResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    studentApi.getStudentReport(reportId)
+      .then(data => setReport(data))
+      .catch(err => {
+        console.error('获取评分报告失败:', err);
+        alert('获取评分报告失败，请稍后重试');
+      })
+      .finally(() => setLoading(false));
+  }, [reportId]);
+
+  const formatTime = (d: string | null) => {
+    if (!d) return '—';
+    return new Date(d).toLocaleString('zh-CN');
+  };
 
   const getScoreLevel = (score: number) => {
     if (score >= 90) return { label: '优秀', color: '#6B9E7A', bg: '#EDFAF2' };
@@ -21,6 +37,14 @@ export default function StudentReport() {
     if (score >= 60) return { label: '及格', color: '#D4A843', bg: '#FFF8E6' };
     return { label: '不及格', color: '#C46B6B', bg: '#FFEAEA' };
   };
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: 64, color: '#A4B0BE', fontSize: 14 }}>加载中...</div>;
+  }
+
+  if (!report) {
+    return <div style={{ textAlign: 'center', padding: 64, color: '#C46B6B', fontSize: 14 }}>报告不存在</div>;
+  }
 
   const level = getScoreLevel(report.total_score);
 
@@ -33,7 +57,6 @@ export default function StudentReport() {
         </button>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 600, color: '#2C3E50', marginBottom: 2 }}>评分报告</h1>
-          <p style={{ fontSize: 13, color: '#7F8C8D' }}>{submission.assignment_title}</p>
         </div>
         <div style={{ marginLeft: 'auto', fontSize: 12, color: '#A4B0BE', display: 'flex', alignItems: 'center', gap: 4 }}>
           <Calendar size={13} />

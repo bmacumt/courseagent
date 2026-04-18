@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ArrowLeft, Eye, Edit3, Clock, User, AlertTriangle, CheckCircle } from 'lucide-react';
-import { mockAssignments } from '../../data/mockData';
+import * as studentApi from '../../api/student';
+import type { AssignmentDetail } from '../../api/types';
 import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
 import { MarkdownRenderer } from '../../components/shared/MarkdownRenderer';
 import { FileUploader } from '../../components/shared/FileUploader';
@@ -12,7 +13,9 @@ export default function SubmitAnswer() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const assignmentId = parseInt(id || '1');
-  const assignment = mockAssignments.find(a => a.id === assignmentId) || mockAssignments[0];
+
+  const [assignment, setAssignment] = useState<AssignmentDetail | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState<Tab>('edit');
   const [content, setContent] = useState('');
@@ -21,6 +24,30 @@ export default function SubmitAnswer() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState('');
+
+  useEffect(() => {
+    studentApi.getStudentAssignment(assignmentId)
+      .then(data => setAssignment(data))
+      .catch(err => {
+        console.error('获取作业详情失败:', err);
+        alert('获取作业详情失败，请稍后重试');
+      })
+      .finally(() => setLoading(false));
+  }, [assignmentId]);
+
+  // Parse grading_criteria JSON string into dimensions array
+  const gradingDimensions = (() => {
+    if (!assignment?.grading_criteria) return [];
+    try {
+      const parsed = JSON.parse(assignment.grading_criteria);
+      if (parsed?.dimensions && Array.isArray(parsed.dimensions)) {
+        return parsed.dimensions;
+      }
+    } catch {
+      // grading_criteria is not valid JSON, return empty
+    }
+    return [];
+  })();
 
   const wordCount = content.trim().length;
   const hasContent = content.trim().length > 0 || uploadedFile !== null;
@@ -43,11 +70,25 @@ export default function SubmitAnswer() {
   const handleConfirmSubmit = async () => {
     setConfirmOpen(false);
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setSubmitting(false);
-    setSubmitted(true);
-    setTimeout(() => navigate('/student/submissions'), 1800);
+    try {
+      await studentApi.submitAnswer(assignmentId, content || undefined, uploadedFile || undefined);
+      setSubmitting(false);
+      setSubmitted(true);
+      setTimeout(() => navigate('/student/submissions'), 1800);
+    } catch (err) {
+      console.error('提交失败:', err);
+      setSubmitting(false);
+      alert('提交失败，请稍后重试');
+    }
   };
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: 64, color: '#A4B0BE', fontSize: 14 }}>加载中...</div>;
+  }
+
+  if (!assignment) {
+    return <div style={{ textAlign: 'center', padding: 64, color: '#C46B6B', fontSize: 14 }}>作业不存在</div>;
+  }
 
   if (submitted) {
     return (
@@ -69,7 +110,7 @@ export default function SubmitAnswer() {
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 600, color: '#2C3E50', marginBottom: 2 }}>{assignment.title}</h1>
           <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#A4B0BE' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><User size={12} /> 张明</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><User size={12} /> {assignment.teacher_name}</span>
             {assignment.deadline && (
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Clock size={12} /> 截止 {formatDeadline(assignment.deadline)}</span>
             )}
@@ -98,17 +139,18 @@ export default function SubmitAnswer() {
 
           <div style={{ background: '#F7F8FA', borderRadius: 10, border: '1px solid #E8ECF0', padding: '14px 18px' }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: '#7F8C8D', marginBottom: 8 }}>评分维度</div>
-            {[
-              { label: '准确性', weight: '30%', color: '#4A6FA5' },
-              { label: '完整性', weight: '25%', color: '#6B9E7A' },
-              { label: '规范性', weight: '25%', color: '#D4A843' },
-              { label: '创新性', weight: '20%', color: '#7A8F9E' },
-            ].map(dim => (
-              <div key={dim.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, color: '#2C3E50' }}>{dim.label}</span>
-                <span style={{ fontSize: 12, color: dim.color, fontWeight: 500 }}>{dim.weight}</span>
-              </div>
-            ))}
+            {gradingDimensions.length > 0 ? gradingDimensions.map(dim => {
+              const dimColors = ['#4A6FA5', '#6B9E7A', '#D4A843', '#7A8F9E', '#9B59B6'];
+              const color = dimColors[gradingDimensions.indexOf(dim) % dimColors.length];
+              return (
+                <div key={dim.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, color: '#2C3E50' }}>{dim.label}</span>
+                  <span style={{ fontSize: 12, color, fontWeight: 500 }}>{Math.round(dim.weight * 100)}%</span>
+                </div>
+              );
+            }) : (
+              <div style={{ fontSize: 12, color: '#A4B0BE' }}>暂无评分维度信息</div>
+            )}
           </div>
         </div>
 

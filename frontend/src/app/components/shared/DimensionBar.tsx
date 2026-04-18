@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { DimensionScore } from '../../data/mockData';
+import type { DimensionScore } from '../../api/types';
 
 function getBarColor(score: number): string {
   if (score >= 80) return '#6B9E7A';

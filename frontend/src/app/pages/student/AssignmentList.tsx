@@ -1,15 +1,23 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Clock, User, CheckCircle, ChevronRight } from 'lucide-react';
-import { mockAssignments } from '../../data/mockData';
+import * as studentApi from '../../api/student';
+import type { StudentAssignment } from '../../api/types';
 
 export default function AssignmentList() {
   const navigate = useNavigate();
+  const [assignments, setAssignments] = useState<StudentAssignment[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const assignments = mockAssignments.filter(a => a.is_published).map((a, i) => ({
-    ...a,
-    teacher_name: '张明',
-    has_submitted: i === 0,
-  }));
+  useEffect(() => {
+    studentApi.getStudentAssignments()
+      .then(data => setAssignments(data))
+      .catch(err => {
+        console.error('获取作业列表失败:', err);
+        alert('获取作业列表失败，请稍后重试');
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const formatDeadline = (d: string | null) => {
     if (!d) return null;
@@ -25,6 +33,10 @@ export default function AssignmentList() {
 
   const pending = assignments.filter(a => !a.has_submitted);
   const completed = assignments.filter(a => a.has_submitted);
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: 64, color: '#A4B0BE', fontSize: 14 }}>加载中...</div>;
+  }
 
   return (
     <div>

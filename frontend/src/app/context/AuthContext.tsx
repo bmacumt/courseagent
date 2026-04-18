@@ -1,11 +1,12 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { credentialsMap, Role } from '../data/mockData';
+import type { Role } from '../api/types';
+import * as authApi from '../api/auth';
 
 export interface AuthUser {
   id: number;
   username: string;
   role: Role;
-  real_name: string;
+  real_name: string | null;
 }
 
 interface AuthContextType {
@@ -16,12 +17,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-const validPasswords: Record<string, string> = {
-  admin: 'admin123',
-  teacher: 'teacher123',
-  student: 'student123',
-};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => {
@@ -34,23 +29,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const login = useCallback(async (username: string, password: string) => {
-    const userData = credentialsMap[username];
-    if (!userData || validPasswords[username] !== password) {
-      return { success: false, error: '用户名或密码错误' };
+    try {
+      const tokenRes = await authApi.login(username, password);
+      localStorage.setItem('tunnel_auth_token', tokenRes.access_token);
+
+      const me = await authApi.getMe();
+      const authUser: AuthUser = {
+        id: me.id,
+        username: me.username,
+        role: me.role as Role,
+        real_name: me.real_name,
+      };
+      setUser(authUser);
+      localStorage.setItem('tunnel_auth_user', JSON.stringify(authUser));
+      return { success: true };
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || '登录失败，请检查用户名和密码';
+      return { success: false, error: msg };
     }
-    const newUser: AuthUser = {
-      id: userData.id,
-      username: userData.username,
-      role: userData.role,
-      real_name: userData.real_name,
-    };
-    setUser(newUser);
-    localStorage.setItem('tunnel_auth_user', JSON.stringify(newUser));
-    return { success: true };
   }, []);
 
   const logout = useCallback(() => {
     setUser(null);
+    localStorage.removeItem('tunnel_auth_token');
     localStorage.removeItem('tunnel_auth_user');
   }, []);
 

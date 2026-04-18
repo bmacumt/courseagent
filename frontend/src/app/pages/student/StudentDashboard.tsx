@@ -1,7 +1,8 @@
-import { ElementType } from 'react';
+import { useState, useEffect, ElementType } from 'react';
 import { useNavigate } from 'react-router';
 import { ClipboardList, CheckCircle, Loader2, Star, ChevronRight, Clock, BookOpen } from 'lucide-react';
-import { mockAssignments, studentSubmissionsList } from '../../data/mockData';
+import * as studentApi from '../../api/student';
+import type { StudentAssignment, SubmissionSummary } from '../../api/types';
 import { StatusTag } from '../../components/shared/StatusTag';
 
 function StatCard({ icon: Icon, label, value, color, onClick }: {
@@ -33,11 +34,30 @@ function StatCard({ icon: Icon, label, value, color, onClick }: {
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
-  const publishedAssignments = mockAssignments.filter(a => a.is_published);
-  const pendingCount = publishedAssignments.filter((_, i) => i > 0).length; // simulate
-  const completedCount = 1;
-  const gradingCount = 0;
-  const latestGraded = studentSubmissionsList.find(s => s.status === 'graded');
+  const [assignments, setAssignments] = useState<StudentAssignment[]>([]);
+  const [submissions, setSubmissions] = useState<SubmissionSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      studentApi.getStudentAssignments(),
+      studentApi.getStudentSubmissions(),
+    ])
+      .then(([assignData, subData]) => {
+        setAssignments(assignData);
+        setSubmissions(subData);
+      })
+      .catch(err => {
+        console.error('获取数据失败:', err);
+        alert('获取数据失败，请稍后重试');
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const pendingCount = assignments.filter(a => !a.has_submitted).length;
+  const completedCount = assignments.filter(a => a.has_submitted).length;
+  const gradingCount = submissions.filter(s => s.status === 'grading').length;
+  const latestGraded = submissions.find(s => s.status === 'graded');
 
   const formatDeadline = (d: string | null) => {
     if (!d) return null;
@@ -50,6 +70,10 @@ export default function StudentDashboard() {
     if (days <= 3) return { label: `${days} 天后截止`, color: '#D4A843' };
     return { label: `${days} 天后截止`, color: '#A4B0BE' };
   };
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: 64, color: '#A4B0BE', fontSize: 14 }}>加载中...</div>;
+  }
 
   return (
     <div>
@@ -85,9 +109,8 @@ export default function StudentDashboard() {
             </button>
           </div>
           <div style={{ padding: '0 20px' }}>
-            {publishedAssignments.slice(0, 3).map((a, i) => {
+            {assignments.slice(0, 3).map((a, i) => {
               const deadline = formatDeadline(a.deadline);
-              const hasSubmitted = i === 0;
               return (
                 <div key={a.id} style={{ padding: '14px 0', borderBottom: i < 2 ? '1px solid #F7F8FA' : 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
@@ -100,14 +123,14 @@ export default function StudentDashboard() {
                       )}
                     </div>
                     <button
-                      onClick={() => navigate(hasSubmitted ? '/student/submissions' : `/student/assignments/${a.id}/submit`)}
+                      onClick={() => navigate(a.has_submitted ? '/student/submissions' : `/student/assignments/${a.id}/submit`)}
                       style={{
-                        padding: '4px 12px', border: hasSubmitted ? '1px solid #E8ECF0' : 'none',
-                        borderRadius: 5, background: hasSubmitted ? '#FFFFFF' : '#4A6FA5',
-                        color: hasSubmitted ? '#7F8C8D' : '#FFFFFF', cursor: 'pointer', fontSize: 12, flexShrink: 0,
+                        padding: '4px 12px', border: a.has_submitted ? '1px solid #E8ECF0' : 'none',
+                        borderRadius: 5, background: a.has_submitted ? '#FFFFFF' : '#4A6FA5',
+                        color: a.has_submitted ? '#7F8C8D' : '#FFFFFF', cursor: 'pointer', fontSize: 12, flexShrink: 0,
                       }}
                     >
-                      {hasSubmitted ? '已提交' : '去答题'}
+                      {a.has_submitted ? '已提交' : '去答题'}
                     </button>
                   </div>
                 </div>
@@ -128,8 +151,8 @@ export default function StudentDashboard() {
             </button>
           </div>
           <div style={{ padding: '0 20px' }}>
-            {studentSubmissionsList.length > 0 ? studentSubmissionsList.map((sub, i) => (
-              <div key={sub.id} style={{ padding: '14px 0', borderBottom: i < studentSubmissionsList.length - 1 ? '1px solid #F7F8FA' : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+            {submissions.length > 0 ? submissions.map((sub, i) => (
+              <div key={sub.id} style={{ padding: '14px 0', borderBottom: i < submissions.length - 1 ? '1px solid #F7F8FA' : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 14, fontWeight: 500, color: '#2C3E50', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sub.assignment_title}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

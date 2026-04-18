@@ -1,24 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Trash2, Bot, User, ChevronDown, ChevronUp, BookOpen, Loader2 } from 'lucide-react';
-import { mockQAHistory, QAMessage } from '../../data/mockData';
+import * as studentApi from '../../api/student';
 import { MarkdownRenderer } from '../../components/shared/MarkdownRenderer';
 import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
 
-const mockResponses = [
-  {
-    answer: '根据 **JTG D70-2004** 的规定，公路隧道围岩按岩体完整性、岩石强度、地下水等因素分为 **6 个级别**（Ⅰ～Ⅵ级）：\n\n- **Ⅰ级（极稳定）**：硬质岩，岩体完整，无水，基本不需要支护\n- **Ⅱ级（稳定）**：硬质岩，岩体较完整，少量渗水\n- **Ⅲ级（较稳定）**：硬质岩或中硬岩，岩体完整性较差\n- **Ⅳ级（不稳定）**：软岩或中硬岩，岩体较破碎，有水\n- **Ⅴ级（很不稳定）**：软岩或极软岩，岩体破碎，水量较大\n- **Ⅵ级（极不稳定）**：极软岩，岩体极破碎，地下水丰富',
-    sources: [{ index: 1, text: '公路隧道围岩分级应根据岩石强度、岩体完整程度、结构面特征、地下水及地应力状况等因素综合评定...', source_name: 'JTG D70-2004.pdf', chunk_index: 15 }],
-  },
-  {
-    answer: '**新奥法（NATM）** 的核心理念是充分利用岩体自身承载能力，将其作为支护结构的组成部分。\n\n### 核心原则\n\n1. **发挥围岩自承能力** — 允许围岩产生适量变形，不过分限制，让岩体应力重新分布\n2. **柔性支护** — 采用锚喷支护取代传统厚重衬砌，以柔就柔\n3. **量测管理** — 通过监控量测掌握围岩动态，指导施工\n4. **封闭成环** — 及时封闭仰拱，形成稳定结构\n\n### 与传统矿山法的区别\n\n| 对比项 | 传统矿山法 | 新奥法 |\n|--------|-----------|--------|\n| 支护思路 | 厚重被动 | 薄型主动 |\n| 施工顺序 | 开挖后立即支护 | 监测后适时支护 |\n| 岩体利用 | 不考虑 | 充分利用 |',
-    sources: [{ index: 1, text: '新奥法（New Austrian Tunnelling Method）由奥地利学者拉布切维茨提出，其基本理念是利用围岩自稳能力...', source_name: 'JTG F60-2009.pdf', chunk_index: 8 }],
-  },
-];
-
-let responseIndex = 0;
+interface ChatMessage {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  sources?: { index: number; text: string; source_name: string | null; chunk_index: number | null }[];
+  timestamp: string;
+}
 
 export default function QA() {
-  const [messages, setMessages] = useState<QAMessage[]>(mockQAHistory);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [clearConfirm, setClearConfirm] = useState(false);
@@ -32,29 +27,39 @@ export default function QA() {
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
-    const userMsg: QAMessage = {
+    const userMsg: ChatMessage = {
       id: Date.now(),
       role: 'user',
       content: input.trim(),
       timestamp: new Date().toISOString(),
     };
     setMessages(prev => [...prev, userMsg]);
+    const questionText = input.trim();
     setInput('');
     setLoading(true);
 
-    await new Promise(r => setTimeout(r, 1200 + Math.random() * 800));
-
-    const resp = mockResponses[responseIndex % mockResponses.length];
-    responseIndex++;
-    const aiMsg: QAMessage = {
-      id: Date.now() + 1,
-      role: 'assistant',
-      content: resp.answer,
-      sources: resp.sources,
-      timestamp: new Date().toISOString(),
-    };
-    setMessages(prev => [...prev, aiMsg]);
-    setLoading(false);
+    try {
+      const resp = await studentApi.askQuestion(questionText);
+      const aiMsg: ChatMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: resp.answer,
+        sources: resp.sources,
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, aiMsg]);
+    } catch (err) {
+      console.error('提问失败:', err);
+      const errorMsg: ChatMessage = {
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: '抱歉，提问失败，请稍后重试。',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -85,8 +90,11 @@ export default function QA() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexShrink: 0 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 600, color: '#2C3E50', marginBottom: 4 }}>知识问答</h1>
-          <p style={{ fontSize: 13, color: '#7F8C8D' }}>基于课程知识库，随时向 AI 提问</p>
+          <h1 style={{ fontSize: 20, fontWeight: 600, color: '#2C3E50', marginBottom: 4 }}>
+            知识问答
+            <span style={{ background: '#FFF8E6', color: '#D4A843', fontSize: 10, padding: '2px 8px', borderRadius: 3, fontWeight: 500, marginLeft: 8, verticalAlign: 'middle' }}>非流式响应</span>
+          </h1>
+          <p style={{ fontSize: 13, color: '#7F8C8D' }}>基于课程知识库，随时向 AI 提问（对话记录仅保存于当前页面）</p>
         </div>
         <button
           onClick={() => setClearConfirm(true)}

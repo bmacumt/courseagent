@@ -1,60 +1,79 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Upload, Trash2, FileText, Loader2, CheckCircle, Plus, Database } from 'lucide-react';
-import { mockDocuments, Document, DocType } from '../../data/mockData';
+import * as teacherApi from '../../api/teacher';
+import type { DocumentResponse } from '../../api/types';
 import { ConfirmDialog, Modal } from '../../components/shared/ConfirmDialog';
 import { FileUploader } from '../../components/shared/FileUploader';
 
-const docTypeConfig: Record<DocType, { label: string; color: string; bg: string }> = {
+const docTypeConfig: Record<string, { label: string; color: string; bg: string }> = {
   specification: { label: '规范', color: '#4A6FA5', bg: '#EBF3FF' },
   textbook: { label: '教材', color: '#6B8F71', bg: '#EDFAF2' },
   other: { label: '其他', color: '#7A8F9E', bg: '#F0F2F5' },
 };
 
 export default function KnowledgeBase() {
-  const [docs, setDocs] = useState<Document[]>(mockDocuments);
-  const [deleteTarget, setDeleteTarget] = useState<Document | null>(null);
+  const [docs, setDocs] = useState<DocumentResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<DocumentResponse | null>(null);
   const [uploadModal, setUploadModal] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadType, setUploadType] = useState<DocType>('specification');
+  const [uploadType, setUploadType] = useState<string>('specification');
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [formError, setFormError] = useState('');
+
+  const fetchDocs = () => {
+    teacherApi.getDocuments()
+      .then(setDocs)
+      .catch(err => {
+        console.error('Failed to load documents:', err);
+        alert('加载文档列表失败');
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchDocs();
+  }, []);
 
   const handleUpload = async () => {
     if (!uploadTitle.trim()) { setFormError('请填写文档标题'); return; }
     if (!uploadFile) { setFormError('请选择要上传的文件'); return; }
     setFormError('');
     setUploading(true);
-    await new Promise(r => setTimeout(r, 1800));
-    const newDoc: Document = {
-      id: Date.now(),
-      doc_uuid: `uuid-${Date.now()}`,
-      filename: uploadFile.name,
-      title: uploadTitle,
-      doc_type: uploadType,
-      owner_id: 2,
-      chunk_count: Math.floor(Math.random() * 50) + 10,
-      uploaded_at: new Date().toISOString(),
-    };
-    setDocs(prev => [newDoc, ...prev]);
-    setUploading(false);
-    setUploadSuccess(true);
-    setTimeout(() => {
-      setUploadSuccess(false);
-      setUploadModal(false);
-      setUploadTitle('');
-      setUploadFile(null);
-      setUploadType('specification');
-    }, 1500);
+    try {
+      await teacherApi.uploadDocument(uploadTitle, uploadFile, uploadType);
+      setUploading(false);
+      setUploadSuccess(true);
+      setTimeout(() => {
+        setUploadSuccess(false);
+        setUploadModal(false);
+        setUploadTitle('');
+        setUploadFile(null);
+        setUploadType('specification');
+        fetchDocs();
+      }, 1500);
+    } catch (err) {
+      console.error('Upload failed:', err);
+      setUploading(false);
+      alert('上传失败');
+    }
   };
 
-  const handleDelete = (doc: Document) => {
-    setDocs(prev => prev.filter(d => d.id !== doc.id));
+  const handleDelete = async (doc: DocumentResponse) => {
+    try {
+      await teacherApi.deleteDocument(doc.id);
+      setDocs(prev => prev.filter(d => d.id !== doc.id));
+    } catch (err) {
+      console.error('Delete failed:', err);
+      alert('删除失败');
+    }
     setDeleteTarget(null);
   };
 
-  const formatDate = (d: string) => {
+  const formatDate = (d: string | null) => {
+    if (!d) return '';
     const date = new Date(d);
     return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
@@ -81,7 +100,7 @@ export default function KnowledgeBase() {
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
-        {(['specification', 'textbook', 'other'] as DocType[]).map(type => {
+        {(['specification', 'textbook', 'other'] as string[]).map(type => {
           const count = docs.filter(d => d.doc_type === type).length;
           const cfg = docTypeConfig[type];
           return (
@@ -97,6 +116,10 @@ export default function KnowledgeBase() {
           <span style={{ fontSize: 18, fontWeight: 600, color: '#2C3E50' }}>{docs.reduce((s, d) => s + d.chunk_count, 0)}</span>
         </div>
       </div>
+
+      {loading && (
+        <div style={{ textAlign: 'center', padding: 48, color: '#7F8C8D', fontSize: 15 }}>加载中...</div>
+      )}
 
       {/* Document Table */}
       <div style={{ background: '#FFFFFF', borderRadius: 10, border: '1px solid #E8ECF0', overflow: 'hidden' }}>
@@ -184,7 +207,7 @@ export default function KnowledgeBase() {
             </div>
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#2C3E50', marginBottom: 6 }}>文档类型</label>
-              <select value={uploadType} onChange={e => setUploadType(e.target.value as DocType)} style={{ ...inputStyle, cursor: 'pointer' }}>
+              <select value={uploadType} onChange={e => setUploadType(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
                 <option value="specification">规范</option>
                 <option value="textbook">教材</option>
                 <option value="other">其他</option>

@@ -1,14 +1,33 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ArrowLeft, Download, ExternalLink, Paperclip } from 'lucide-react';
-import { mockSubmissions, mockAssignments } from '../../data/mockData';
+import * as teacherApi from '../../api/teacher';
+import type { SubmissionSummary, AssignmentSummary } from '../../api/types';
 import { StatusTag } from '../../components/shared/StatusTag';
 
 export default function Submissions() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const assignmentId = parseInt(id || '1');
-  const assignment = mockAssignments.find(a => a.id === assignmentId) || mockAssignments[0];
-  const submissions = mockSubmissions.filter(s => s.assignment_id === assignmentId);
+  const [assignment, setAssignment] = useState<AssignmentSummary | null>(null);
+  const [submissions, setSubmissions] = useState<SubmissionSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      teacherApi.getSubmissions(assignmentId),
+      teacherApi.getAssignments(),
+    ])
+      .then(([subs, assigns]) => {
+        setSubmissions(subs);
+        setAssignment(assigns.find(a => a.id === assignmentId) || assigns[0] || null);
+      })
+      .catch(err => {
+        console.error('Failed to load submissions:', err);
+        alert('加载提交数据失败');
+      })
+      .finally(() => setLoading(false));
+  }, [assignmentId]);
 
   const graded = submissions.filter(s => s.status === 'graded');
   const avgScore = graded.length > 0
@@ -27,51 +46,13 @@ export default function Submissions() {
     return '#C46B6B';
   };
 
-  const statusLabel: Record<string, string> = {
-    graded: '已评分',
-    grading: '评分中',
-    submitted: '已提交',
-    failed: '评分失败',
-  };
-
   const handleExportCSV = () => {
-    const header = ['姓名', '用户名', '提交时间', '状态', '总分', '有附件'];
-    const rows = submissions.map(sub => [
-      sub.student_real_name || sub.student_name,
-      sub.student_name,
-      new Date(sub.submitted_at).toLocaleString('zh-CN'),
-      statusLabel[sub.status] || sub.status,
-      sub.total_score !== null ? String(sub.total_score) : '—',
-      sub.has_attachment ? '是' : '否',
-    ]);
-    const csvContent = [header, ...rows]
-      .map(row => row.map(cell => `"${cell}"`).join(','))
-      .join('\n');
-    const bom = '\uFEFF'; // UTF-8 BOM for Excel compatibility
-    const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${assignment.title}_成绩.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    window.open(teacherApi.getExportCsvUrl(assignmentId));
   };
 
-  const handleDownloadPDF = (studentName: string, submissionId: number) => {
-    // Mock PDF: generate a simple text-based placeholder as a .pdf blob
-    const content = `评分报告\n作业：${assignment.title}\n学生：${studentName}\n提交ID：${submissionId}\n\n（此为演示模式下的模拟附件，真实环境将下载学生上传的原始PDF文件）`;
-    const blob = new Blob([content], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${studentName}_作业附件_${submissionId}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: 64, color: '#7F8C8D', fontSize: 15 }}>加载中...</div>;
+  }
 
   return (
     <div>
@@ -81,7 +62,7 @@ export default function Submissions() {
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 600, color: '#2C3E50', marginBottom: 2 }}>{assignment.title}</h1>
+          <h1 style={{ fontSize: 20, fontWeight: 600, color: '#2C3E50', marginBottom: 2 }}>{assignment?.title || ''}</h1>
           <p style={{ fontSize: 13, color: '#7F8C8D' }}>提交列表 · 共 {submissions.length} 份提交</p>
         </div>
         <div style={{ marginLeft: 'auto' }}>
@@ -146,18 +127,16 @@ export default function Submissions() {
                 </td>
                 <td style={{ padding: '14px 18px' }}>
                   {sub.has_attachment && (
-                    <button
-                      onClick={() => handleDownloadPDF(sub.student_real_name || sub.student_name, sub.id)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#4A6FA5', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                    >
-                      <Paperclip size={13} /> 下载PDF
-                    </button>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#A4B0BE' }}>
+                      <Paperclip size={13} />
+                      <span style={{ background: '#FFF8E6', color: '#D4A843', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>后端接口未开发</span>
+                    </span>
                   )}
                 </td>
                 <td style={{ padding: '14px 18px' }}>
-                  {sub.status === 'graded' && (
+                  {sub.status === 'graded' && sub.report_id && (
                     <button
-                      onClick={() => navigate(`/teacher/reports/${sub.id}`)}
+                      onClick={() => navigate(`/teacher/reports/${sub.report_id}`)}
                       style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', border: '1px solid #E8ECF0', borderRadius: 5, background: '#FFFFFF', color: '#4A6FA5', cursor: 'pointer', fontSize: 13 }}
                     >
                       <ExternalLink size={13} /> 评分报告

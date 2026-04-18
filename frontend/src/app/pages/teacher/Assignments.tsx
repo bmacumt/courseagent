@@ -1,9 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Plus, Edit2, Trash2, Send, Users, Clock, ChevronDown, ChevronUp, Minus } from 'lucide-react';
-import { mockAssignments, Assignment } from '../../data/mockData';
+import * as teacherApi from '../../api/teacher';
+import type { AssignmentSummary } from '../../api/types';
 import { ConfirmDialog, Modal } from '../../components/shared/ConfirmDialog';
 import { PublishTag } from '../../components/shared/StatusTag';
+
+type AssignmentItem = AssignmentSummary & {
+  description?: string;
+  question?: string;
+  reference_answer?: string | null;
+  grading_criteria?: string;
+};
 
 interface Dimension { name: string; label: string; weight: number; description: string; }
 
@@ -39,11 +47,12 @@ function FormField({ label, children, required, hint }: { label: string; childre
 
 export default function Assignments() {
   const navigate = useNavigate();
-  const [assignments, setAssignments] = useState<Assignment[]>(mockAssignments);
+  const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [formModal, setFormModal] = useState(false);
-  const [editTarget, setEditTarget] = useState<Assignment | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<Assignment | null>(null);
-  const [publishConfirm, setPublishConfirm] = useState<Assignment | null>(null);
+  const [editTarget, setEditTarget] = useState<AssignmentItem | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<AssignmentItem | null>(null);
+  const [publishConfirm, setPublishConfirm] = useState<AssignmentItem | null>(null);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -54,6 +63,20 @@ export default function Assignments() {
   const [dimensions, setDimensions] = useState<Dimension[]>(defaultDimensions);
   const [formError, setFormError] = useState('');
 
+  const fetchAssignments = () => {
+    teacherApi.getAssignments()
+      .then(data => setAssignments(data as AssignmentItem[]))
+      .catch(err => {
+        console.error('Failed to load assignments:', err);
+        alert('加载作业列表失败');
+      })
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchAssignments();
+  }, []);
+
   const openCreate = () => {
     setEditTarget(null);
     setTitle(''); setDescription(''); setQuestion(''); setRefAnswer(''); setDeadline('');
@@ -61,9 +84,9 @@ export default function Assignments() {
     setFormModal(true);
   };
 
-  const openEdit = (a: Assignment) => {
+  const openEdit = (a: AssignmentItem) => {
     setEditTarget(a);
-    setTitle(a.title); setDescription(a.description); setQuestion(a.question);
+    setTitle(a.title); setDescription(a.description || ''); setQuestion(a.question || '');
     setRefAnswer(a.reference_answer || ''); setDeadline(a.deadline ? a.deadline.slice(0, 16) : '');
     setUseCustomDims(false); setDimensions(defaultDimensions); setFormError('');
     setFormModal(true);
@@ -71,37 +94,56 @@ export default function Assignments() {
 
   const weightTotal = dimensions.reduce((s, d) => s + d.weight, 0);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) { setFormError('请填写作业标题'); return; }
     if (!description.trim()) { setFormError('请填写题目描述'); return; }
     if (!question.trim()) { setFormError('请填写具体题目'); return; }
     if (useCustomDims && Math.abs(weightTotal - 1) > 0.01) { setFormError(`权重合计必须等于 1.0，当前为 ${weightTotal.toFixed(2)}`); return; }
     setFormError('');
-    const criteria = JSON.stringify({ dimensions: useCustomDims ? dimensions : defaultDimensions });
-    if (editTarget) {
-      setAssignments(prev => prev.map(a => a.id === editTarget.id ? {
-        ...a, title, description, question, reference_answer: refAnswer || null,
-        deadline: deadline ? `${deadline}:00` : null, grading_criteria: criteria,
-      } : a));
-    } else {
-      const newA: Assignment = {
-        id: Date.now(), teacher_id: 2, title, description, question,
-        reference_answer: refAnswer || null, grading_criteria: criteria,
-        deadline: deadline ? `${deadline}:00` : null,
-        is_published: false, created_at: new Date().toISOString(), submission_count: 0,
-      };
-      setAssignments(prev => [newA, ...prev]);
+    const criteria = {
+      dimensions: useCustomDims ? dimensions : defaultDimensions,
+    };
+    const data = {
+      title,
+      description,
+      question,
+      reference_answer: refAnswer || null,
+      grading_criteria: criteria,
+      deadline: deadline ? `${deadline}:00` : null,
+    };
+    try {
+      if (editTarget) {
+        await teacherApi.updateAssignment(editTarget.id, data);
+      } else {
+        await teacherApi.createAssignment(data);
+      }
+      setFormModal(false);
+      fetchAssignments();
+    } catch (err) {
+      console.error('Save assignment failed:', err);
+      alert('保存作业失败');
     }
-    setFormModal(false);
   };
 
-  const handlePublish = (a: Assignment) => {
-    setAssignments(prev => prev.map(x => x.id === a.id ? { ...x, is_published: true } : x));
+  const handlePublish = async (a: AssignmentItem) => {
+    try {
+      await teacherApi.publishAssignment(a.id);
+      fetchAssignments();
+    } catch (err) {
+      console.error('Publish assignment failed:', err);
+      alert('发布作业失败');
+    }
     setPublishConfirm(null);
   };
 
-  const handleDelete = (a: Assignment) => {
-    setAssignments(prev => prev.filter(x => x.id !== a.id));
+  const handleDelete = async (a: AssignmentItem) => {
+    try {
+      await teacherApi.deleteAssignment(a.id);
+      setAssignments(prev => prev.filter(x => x.id !== a.id));
+    } catch (err) {
+      console.error('Delete assignment failed:', err);
+      alert('删除作业失败');
+    }
     setDeleteConfirm(null);
   };
 
@@ -128,6 +170,10 @@ export default function Assignments() {
           <Plus size={15} /> 创建作业
         </button>
       </div>
+
+      {loading && (
+        <div style={{ textAlign: 'center', padding: 64, color: '#7F8C8D', fontSize: 15 }}>加载中...</div>
+      )}
 
       {/* Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>

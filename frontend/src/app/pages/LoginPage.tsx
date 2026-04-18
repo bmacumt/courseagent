@@ -187,8 +187,8 @@ export default function LoginPage() {
             <div style={{ display: 'flex', gap: 8 }}>
               {[
                 { label: '管理员', user: 'admin', pass: 'admin123', color: '#4A6FA5', bg: '#EBF3FF' },
-                { label: '教师', user: 'teacher', pass: 'teacher123', color: '#6B8F71', bg: '#EDFAF2' },
-                { label: '学生', user: 'student', pass: 'student123', color: '#7A8F9E', bg: '#F0F2F5' },
+                { label: '教师', user: 'teacher1', pass: 'teacher123', color: '#6B8F71', bg: '#EDFAF2' },
+                { label: '学生', user: 'student1', pass: 'student123', color: '#7A8F9E', bg: '#F0F2F5' },
               ].map((item) => (
                 <button
                   key={item.label}

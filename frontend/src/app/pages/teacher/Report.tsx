@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ArrowLeft, BookOpen, Quote, Calendar } from 'lucide-react';
-import { mockReport, mockSubmissions, mockAssignments } from '../../data/mockData';
+import * as teacherApi from '../../api/teacher';
+import type { ReportResponse } from '../../api/types';
 import { ScoreCircle } from '../../components/shared/ScoreCircle';
 import { DimensionBar } from '../../components/shared/DimensionBar';
 import { MarkdownRenderer } from '../../components/shared/MarkdownRenderer';
@@ -8,12 +10,22 @@ import { MarkdownRenderer } from '../../components/shared/MarkdownRenderer';
 export default function TeacherReport() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const submissionId = parseInt(id || '1');
-  const submission = mockSubmissions.find(s => s.id === submissionId) || mockSubmissions[0];
-  const assignment = mockAssignments.find(a => a.id === submission.assignment_id) || mockAssignments[0];
-  const report = mockReport;
+  const reportId = parseInt(id || '1');
+  const [report, setReport] = useState<ReportResponse | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const formatTime = (d: string) => new Date(d).toLocaleString('zh-CN');
+  useEffect(() => {
+    teacherApi.getReport(reportId)
+      .then(rpt => {
+        setReport(rpt);
+      })
+      .catch(err => {
+        console.error('Failed to load report:', err);
+      })
+      .finally(() => setLoading(false));
+  }, [reportId]);
+
+  const formatTime = (d: string | null) => d ? new Date(d).toLocaleString('zh-CN') : '';
 
   const getScoreLevel = (score: number) => {
     if (score >= 90) return { label: '优秀', color: '#6B9E7A' };
@@ -22,6 +34,10 @@ export default function TeacherReport() {
     if (score >= 60) return { label: '及格', color: '#D4A843' };
     return { label: '不及格', color: '#C46B6B' };
   };
+
+  if (loading || !report) {
+    return <div style={{ textAlign: 'center', padding: 64, color: '#7F8C8D', fontSize: 15 }}>加载中...</div>;
+  }
 
   const level = getScoreLevel(report.total_score);
 
@@ -35,7 +51,7 @@ export default function TeacherReport() {
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 600, color: '#2C3E50', marginBottom: 2 }}>评分报告</h1>
           <p style={{ fontSize: 13, color: '#7F8C8D' }}>
-            {submission.student_real_name || submission.student_name} · {assignment.title}
+            {report.student_real_name || ''} · {report.assignment_title || ''}
           </p>
         </div>
         <div style={{ marginLeft: 'auto', fontSize: 12, color: '#A4B0BE', display: 'flex', alignItems: 'center', gap: 4 }}>
