@@ -43,9 +43,14 @@ export default function KnowledgeBase() {
     setFormError('');
     setUploading(true);
     try {
-      await teacherApi.uploadDocument(uploadTitle, uploadFile, uploadType);
+      const resp = await teacherApi.uploadDocument(uploadTitle, uploadFile, uploadType);
       setUploading(false);
-      setUploadSuccess(true);
+      if (resp.chunk_count === 0) {
+        setUploadSuccess(false);
+        setFormError('文档已保存但解析失败（分块数为 0）。请在"系统配置"中检查 API Key 是否正确配置。');
+      } else {
+        setUploadSuccess(true);
+      }
       setTimeout(() => {
         setUploadSuccess(false);
         setUploadModal(false);
@@ -151,8 +156,17 @@ export default function KnowledgeBase() {
                   </td>
                   <td style={{ padding: '14px 18px', fontSize: 13, color: '#7F8C8D' }}>{doc.filename}</td>
                   <td style={{ padding: '14px 18px' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#2C3E50' }}>{doc.chunk_count}</span>
-                    <span style={{ fontSize: 12, color: '#A4B0BE', marginLeft: 4 }}>块</span>
+                    {doc.chunk_count === 0 ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: '#D4A843' }}>0</span>
+                        <span style={{ background: '#FFF8E6', color: '#D4A843', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>未解析</span>
+                      </span>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: '#2C3E50' }}>{doc.chunk_count}</span>
+                        <span style={{ fontSize: 12, color: '#A4B0BE', marginLeft: 4 }}>块</span>
+                      </>
+                    )}
                   </td>
                   <td style={{ padding: '14px 18px', fontSize: 12, color: '#A4B0BE' }}>{formatDate(doc.uploaded_at)}</td>
                   <td style={{ padding: '14px 18px' }}>

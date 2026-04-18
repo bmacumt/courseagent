@@ -2,7 +2,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.db.engine import init_db
+from app.db.engine import init_db, async_session
 from app.api.auth_routes import router as auth_router
 from app.api.admin import router as admin_router
 from app.api.teacher import router as teacher_router
@@ -12,6 +12,9 @@ from app.api.student import router as student_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    from app.services.settings_service import seed_defaults
+    async with async_session() as session:
+        await seed_defaults(session)
     yield
 
 

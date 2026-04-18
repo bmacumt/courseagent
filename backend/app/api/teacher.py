@@ -71,14 +71,18 @@ async def upload_document(
 
     chunk_count = 0
     doc_uuid = uuid.uuid4().hex
+    ingest_error = None
     try:
         rag = RAGService()
         result = rag.manager.ingest_pdf(save_path)
         if result.get("status") == "ok":
             chunk_count = result["num_chunks"]
             doc_uuid = result["doc_id"]
-    except Exception:
-        logger.warning("RAG ingestion skipped for %s — file saved, chunks=0", file.filename)
+        else:
+            ingest_error = result.get("error", "Unknown error")
+    except Exception as e:
+        ingest_error = str(e)
+        logger.warning("RAG ingestion skipped for %s: %s", file.filename, ingest_error)
 
     doc = Document(
         doc_uuid=doc_uuid,

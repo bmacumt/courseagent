@@ -190,11 +190,17 @@ async def update_setting(
     result = await session.execute(select(Setting).where(Setting.key == key))
     setting = result.scalar_one_or_none()
     if not setting:
-        setting = Setting(key=key, value=req.value)
+        from app.services.settings_service import DEFAULTS
+        category = next((c for c, k, _ in DEFAULTS if k == key), "general")
+        setting = Setting(key=key, value=req.value, category=category)
         session.add(setting)
     else:
         setting.value = req.value
 
     await session.commit()
     await session.refresh(setting)
+
+    from app.services.settings_service import sync_to_env
+    sync_to_env(key, req.value)
+
     return setting
