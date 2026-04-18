@@ -4,7 +4,7 @@ import logging
 import os
 import shutil
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
@@ -100,7 +100,7 @@ async def submit_answer(
     if not assignment or not assignment.is_published:
         raise HTTPException(status_code=404, detail="Assignment not found")
 
-    if assignment.deadline and datetime.now(timezone.utc) > assignment.deadline:
+    if assignment.deadline and datetime.now() > assignment.deadline:
         raise HTTPException(status_code=400, detail="Assignment deadline has passed")
 
     if not content and not file:
