@@ -8,7 +8,7 @@ import shutil
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +18,7 @@ from app.db.engine import get_session, async_session
 from app.db.models import User, Document, Assignment, Submission, Report
 from app.api.schemas import (
     DocumentResponse, CreateAssignmentRequest, UpdateAssignmentRequest,
-    AssignmentResponse, AssignmentSummary, SubmissionSummary, ReportResponse,
+    AssignmentResponse, AssignmentSummary, SubmissionSummary, SubmissionDetail, ReportResponse,
     DimensionScoreItem,
 )
 from app.services.rag_service import RAGService
@@ -278,10 +278,13 @@ async def list_submissions(
             id=s.id, assignment_id=s.assignment_id,
             student_name=student.username if student else None,
             student_real_name=student.real_name if student else None,
+            student_id_field=student.student_id if student else None,
+            class_name=student.class_name if student else None,
             status=s.status,
             submitted_at=s.submitted_at,
             total_score=report.total_score if report else None,
             has_attachment=s.attachment_path is not None,
+            attachment_filename=os.path.basename(s.attachment_path).split("_", 1)[-1] if s.attachment_path else None,
             report_id=report.id if report else None,
         ))
     return summaries
@@ -307,6 +310,64 @@ async def get_report(
         student = await session.get(User, submission.student_id)
 
     return _format_report(report, assignment, student)
+
+
+@router.get("/submissions/{submission_id}/attachment")
+async def download_attachment(
+    submission_id: int,
+    current_user: User = Depends(require_teacher),
+    session: AsyncSession = Depends(get_session),
+):
+    submission = await session.get(Submission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    assignment = await session.get(Assignment, submission.assignment_id)
+    if not assignment or assignment.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your assignment")
+
+    if not submission.attachment_path or not os.path.exists(submission.attachment_path):
+        raise HTTPException(status_code=404, detail="No attachment found")
+
+    filename = os.path.basename(submission.attachment_path).split("_", 1)[-1]
+    student = await session.get(User, submission.student_id)
+    display_name = f"{student.student_id or student.username}_{student.real_name or student.username}_{filename}" if student else filename
+    from urllib.parse import quote
+    encoded = quote(display_name)
+    return FileResponse(
+        submission.attachment_path,
+        headers={"Content-Disposition": f"attachment; filename=\"{display_name}\"; filename*=UTF-8''{encoded}"},
+    )
+
+
+@router.get("/submissions/{submission_id}", response_model=SubmissionDetail)
+async def get_submission_detail(
+    submission_id: int,
+    current_user: User = Depends(require_teacher),
+    session: AsyncSession = Depends(get_session),
+):
+    submission = await session.get(Submission, submission_id)
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    assignment = await session.get(Assignment, submission.assignment_id)
+    if not assignment or assignment.teacher_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your assignment")
+
+    student = await session.get(User, submission.student_id)
+    return SubmissionDetail(
+        id=submission.id,
+        assignment_id=submission.assignment_id,
+        student_name=student.username if student else None,
+        student_real_name=student.real_name if student else None,
+        student_id_field=student.student_id if student else None,
+        class_name=student.class_name if student else None,
+        content=submission.content,
+        has_attachment=submission.attachment_path is not None,
+        attachment_filename=os.path.basename(submission.attachment_path).split("_", 1)[-1] if submission.attachment_path else None,
+        status=submission.status,
+        submitted_at=submission.submitted_at,
+    )
 
 
 def _format_report(report: Report, assignment=None, student=None) -> ReportResponse:

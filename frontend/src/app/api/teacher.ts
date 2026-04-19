@@ -5,6 +5,7 @@ import type {
   AssignmentResponse,
   CreateAssignmentRequest,
   SubmissionSummary,
+  SubmissionDetail,
   ReportResponse,
 } from './types';
 
@@ -58,12 +59,58 @@ export async function getSubmissions(assignmentId: number): Promise<SubmissionSu
   return res.data;
 }
 
-export function getExportCsvUrl(assignmentId: number): string {
-  return `${client.defaults.baseURL}/teacher/assignments/${assignmentId}/export`;
+export async function getSubmissionDetail(submissionId: number): Promise<SubmissionDetail> {
+  const res = await client.get<SubmissionDetail>(`/teacher/submissions/${submissionId}`);
+  return res.data;
+}
+
+export async function exportCsv(assignmentId: number, filename?: string): Promise<void> {
+  const token = localStorage.getItem('tunnel_auth_token');
+  const resp = await fetch(`${client.defaults.baseURL}/teacher/assignments/${assignmentId}/export`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) { throw new Error('导出失败'); }
+  const blob = await resp.blob();
+  const disposition = resp.headers.get('content-disposition');
+  const name = filename || parseFilename(disposition);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
 }
 
 // Reports
 export async function getReport(reportId: number): Promise<ReportResponse> {
   const res = await client.get<ReportResponse>(`/teacher/reports/${reportId}`);
   return res.data;
+}
+
+// Attachment download
+export async function fetchAttachmentBlob(submissionId: number): Promise<{ blob: Blob; filename: string }> {
+  const token = localStorage.getItem('tunnel_auth_token');
+  const resp = await fetch(`${client.defaults.baseURL}/teacher/submissions/${submissionId}/attachment`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!resp.ok) { throw new Error('下载失败'); }
+  const blob = await resp.blob();
+  const disposition = resp.headers.get('content-disposition');
+  const filename = parseFilename(disposition);
+  return { blob, filename };
+}
+
+export async function downloadAttachment(submissionId: number): Promise<void> {
+  const { blob, filename } = await fetchAttachmentBlob(submissionId);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function parseFilename(disposition: string | null): string {
+  if (!disposition) return 'attachment';
+  const utf8 = disposition.match(/filename\*=UTF-8''(.+?)(?:;|$)/i);
+  if (utf8) return decodeURIComponent(utf8[1]);
+  const ascii = disposition.match(/filename="?(.+?)"?(?:;|$)/i);
+  if (ascii) return ascii[1].replace(/^"|"$/g, '');
+  return 'attachment';
 }

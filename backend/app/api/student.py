@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -200,10 +200,14 @@ async def download_attachment(
         raise HTTPException(status_code=404, detail="No attachment found")
 
     filename = os.path.basename(submission.attachment_path).split("_", 1)[-1]
+    student = await session.get(User, submission.student_id)
+    display_name = f"{student.student_id or student.username}_{student.real_name or student.username}_{filename}" if student else filename
+    from urllib.parse import quote
+    encoded = quote(display_name)
     return FileResponse(
         submission.attachment_path,
         media_type="application/octet-stream",
-        filename=filename,
+        headers={"Content-Disposition": f"attachment; filename=\"{display_name}\"; filename*=UTF-8''{encoded}"},
     )
 
 
@@ -247,6 +251,19 @@ async def ask_question(
                 chunk_index=meta.get("chunk_index"),
             ))
     return QAResponse(answer=answer, sources=source_items)
+
+
+@router.post("/qa/stream")
+async def stream_question(
+    req: QARequest,
+    current_user: User = Depends(require_student),
+):
+    rag = RAGService()
+    return StreamingResponse(
+        rag.stream_query(req.question),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 def _format_report(report: Report, assignment=None) -> ReportResponse:

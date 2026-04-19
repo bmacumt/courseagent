@@ -135,11 +135,28 @@ export interface SubmissionSummary {
   assignment_title: string | null;
   student_name: string | null;
   student_real_name: string | null;
+  student_id_field: string | null;
+  class_name: string | null;
   status: SubmissionStatus;
   submitted_at: string | null;
   total_score: number | null;
   has_attachment: boolean;
+  attachment_filename: string | null;
   report_id: number | null;
+}
+
+export interface SubmissionDetail {
+  id: number;
+  assignment_id: number;
+  student_name: string | null;
+  student_real_name: string | null;
+  student_id_field: string | null;
+  class_name: string | null;
+  content: string;
+  has_attachment: boolean;
+  attachment_filename: string | null;
+  status: string;
+  submitted_at: string | null;
 }
 
 export interface SubmitResult {

@@ -2,6 +2,7 @@
 import logging
 import os
 import uuid
+from typing import AsyncGenerator
 
 from app.services.rag.chunking.laws_chunker import chunk
 from app.services.rag.chunking.mineru_adapter import mineru_to_sections
@@ -74,6 +75,12 @@ class PipelineManager:
         """Query pipeline: retrieve → rerank → answer."""
         logger.info(f"[query] {question[:80]}")
         return await self.qa_chain.answer(question)
+
+    async def stream_query(self, question: str) -> AsyncGenerator[str, None]:
+        """Stream query pipeline: retrieve → rerank → stream answer."""
+        logger.info(f"[stream_query] {question[:80]}")
+        async for event in self.qa_chain.stream_answer(question):
+            yield event
 
     def delete_document(self, doc_id: str) -> bool:
         """Delete a document and all its chunks."""

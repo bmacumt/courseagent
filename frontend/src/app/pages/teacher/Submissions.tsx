@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Download, ExternalLink, Paperclip } from 'lucide-react';
+import { ArrowLeft, Download, ExternalLink, Eye, FileText, X } from 'lucide-react';
 import * as teacherApi from '../../api/teacher';
-import type { SubmissionSummary, AssignmentSummary } from '../../api/types';
+import type { SubmissionSummary, AssignmentSummary, SubmissionDetail } from '../../api/types';
 import { StatusTag } from '../../components/shared/StatusTag';
+import { Modal } from '../../components/shared/ConfirmDialog';
+import { MarkdownRenderer } from '../../components/shared/MarkdownRenderer';
 
 export default function Submissions() {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +14,9 @@ export default function Submissions() {
   const [assignment, setAssignment] = useState<AssignmentSummary | null>(null);
   const [submissions, setSubmissions] = useState<SubmissionSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [preview, setPreview] = useState<SubmissionDetail | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewPdf, setPreviewPdf] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -47,7 +52,28 @@ export default function Submissions() {
   };
 
   const handleExportCSV = () => {
-    window.open(teacherApi.getExportCsvUrl(assignmentId));
+    teacherApi.exportCsv(assignmentId).catch(() => alert('导出失败'));
+  };
+
+  const handlePreview = async (sub: SubmissionSummary) => {
+    setPreviewLoading(true);
+    setPreview(null);
+    setPreviewPdf(null);
+    try {
+      const detail = await teacherApi.getSubmissionDetail(sub.id);
+      setPreview(detail);
+      // If attachment is PDF, fetch blob for iframe preview
+      if (detail.has_attachment && detail.attachment_filename?.toLowerCase().endsWith('.pdf')) {
+        try {
+          const { blob } = await teacherApi.fetchAttachmentBlob(sub.id);
+          setPreviewPdf(URL.createObjectURL(blob));
+        } catch {}
+      }
+    } catch {
+      alert('加载提交详情失败');
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   if (loading) {
@@ -102,7 +128,7 @@ export default function Submissions() {
           </thead>
           <tbody>
             {submissions.map((sub, i) => (
-              <tr key={sub.id} style={{ background: i % 2 === 1 ? '#FAFBFC' : '#FFFFFF', cursor: sub.status === 'graded' ? 'pointer' : 'default' }}
+              <tr key={sub.id} style={{ background: i % 2 === 1 ? '#FAFBFC' : '#FFFFFF' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#F0F6FF')}
                 onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 1 ? '#FAFBFC' : '#FFFFFF')}>
                 <td style={{ padding: '14px 18px' }}>
@@ -112,7 +138,7 @@ export default function Submissions() {
                     </div>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 500, color: '#2C3E50' }}>{sub.student_real_name || sub.student_name}</div>
-                      <div style={{ fontSize: 12, color: '#A4B0BE' }}>{sub.student_name}</div>
+                      <div style={{ fontSize: 12, color: '#A4B0BE' }}>{sub.student_name}{sub.student_id_field ? ` · ${sub.student_id_field}` : ''}</div>
                     </div>
                   </div>
                 </td>
@@ -127,21 +153,32 @@ export default function Submissions() {
                 </td>
                 <td style={{ padding: '14px 18px' }}>
                   {sub.has_attachment && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#A4B0BE' }}>
-                      <Paperclip size={13} />
-                      <span style={{ background: '#FFF8E6', color: '#D4A843', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>后端接口未开发</span>
-                    </span>
+                    <button
+                      onClick={() => teacherApi.downloadAttachment(sub.id).catch(() => alert('下载失败'))}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#4A6FA5', background: 'none', border: '1px solid #E8ECF0', cursor: 'pointer', padding: '4px 8px', borderRadius: 5 }}
+                    >
+                      <Download size={13} /> {sub.attachment_filename || '下载附件'}
+                    </button>
                   )}
                 </td>
                 <td style={{ padding: '14px 18px' }}>
-                  {sub.status === 'graded' && sub.report_id && (
+                  <div style={{ display: 'flex', gap: 6 }}>
                     <button
-                      onClick={() => navigate(`/teacher/reports/${sub.report_id}`)}
+                      onClick={() => handlePreview(sub)}
+                      disabled={previewLoading}
                       style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', border: '1px solid #E8ECF0', borderRadius: 5, background: '#FFFFFF', color: '#4A6FA5', cursor: 'pointer', fontSize: 13 }}
                     >
-                      <ExternalLink size={13} /> 评分报告
+                      <Eye size={13} /> 查看
                     </button>
-                  )}
+                    {sub.status === 'graded' && sub.report_id && (
+                      <button
+                        onClick={() => navigate(`/teacher/reports/${sub.report_id}`)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', border: '1px solid #E8ECF0', borderRadius: 5, background: '#FFFFFF', color: '#4A6FA5', cursor: 'pointer', fontSize: 13 }}
+                      >
+                        <ExternalLink size={13} /> 报告
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -151,6 +188,58 @@ export default function Submissions() {
           <div style={{ textAlign: 'center', padding: 48, color: '#A4B0BE', fontSize: 14 }}>暂无提交记录</div>
         )}
       </div>
+
+      {/* Preview Modal */}
+      <Modal
+        open={!!preview}
+        title={preview ? `${preview.student_real_name || preview.student_name} 的提交` : ''}
+        onClose={() => {
+          if (previewPdf) URL.revokeObjectURL(previewPdf);
+          setPreview(null); setPreviewPdf(null);
+        }}
+        width={previewPdf ? 900 : 680}
+      >
+        {preview && (
+          <div>
+            {/* Student info */}
+            <div style={{ display: 'flex', gap: 16, marginBottom: 16, fontSize: 13, color: '#7F8C8D' }}>
+              {preview.student_id_field && <span>学号: {preview.student_id_field}</span>}
+              {preview.class_name && <span>班级: {preview.class_name}</span>}
+              <span>状态: {preview.status}</span>
+              {preview.submitted_at && <span>提交于: {formatTime(preview.submitted_at)}</span>}
+            </div>
+
+            {/* PDF preview */}
+            {previewPdf && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#2C3E50', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FileText size={15} /> PDF 附件预览
+                </div>
+                <iframe
+                  src={previewPdf}
+                  style={{ width: '100%', height: 500, border: '1px solid #E8ECF0', borderRadius: 8 }}
+                  title="PDF Preview"
+                />
+              </div>
+            )}
+
+            {/* Text content */}
+            {preview.content && (
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#2C3E50', marginBottom: 8 }}>
+                  提交内容
+                </div>
+                <div style={{
+                  background: '#F7F8FA', borderRadius: 8, border: '1px solid #E8ECF0',
+                  padding: '16px 20px', maxHeight: previewPdf ? 300 : 500, overflow: 'auto',
+                }}>
+                  <MarkdownRenderer content={preview.content} />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

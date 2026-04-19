@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Trash2, Bot, User, ChevronDown, ChevronUp, BookOpen, Loader2 } from 'lucide-react';
 import * as studentApi from '../../api/student';
 import { MarkdownRenderer } from '../../components/shared/MarkdownRenderer';
@@ -16,50 +16,73 @@ export default function QA() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const [clearConfirm, setClearConfirm] = useState(false);
   const [expandedSources, setExpandedSources] = useState<Record<number, boolean>>({});
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
+  const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  }, []);
 
-  const handleSend = async () => {
+  useEffect(() => { scrollToBottom(); }, [messages, streaming, scrollToBottom]);
+
+  const handleSend = () => {
     if (!input.trim() || loading) return;
+    const questionText = input.trim();
+
     const userMsg: ChatMessage = {
       id: Date.now(),
       role: 'user',
-      content: input.trim(),
+      content: questionText,
       timestamp: new Date().toISOString(),
     };
     setMessages(prev => [...prev, userMsg]);
-    const questionText = input.trim();
     setInput('');
     setLoading(true);
 
-    try {
-      const resp = await studentApi.askQuestion(questionText);
-      const aiMsg: ChatMessage = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: resp.answer,
-        sources: resp.sources,
-        timestamp: new Date().toISOString(),
-      };
-      setMessages(prev => [...prev, aiMsg]);
-    } catch (err) {
-      console.error('提问失败:', err);
-      const errorMsg: ChatMessage = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: '抱歉，提问失败，请稍后重试。',
-        timestamp: new Date().toISOString(),
-      };
-      setMessages(prev => [...prev, errorMsg]);
-    } finally {
-      setLoading(false);
-    }
+    const aiMsgId = Date.now() + 1;
+    const aiMsg: ChatMessage = {
+      id: aiMsgId,
+      role: 'assistant',
+      content: '',
+      sources: undefined,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, aiMsg]);
+
+    const controller = studentApi.streamQuestion(questionText, {
+      onSources: (sources) => {
+        const formatted = sources.map((s: any) => ({
+          index: s.index,
+          text: (s.text || '').slice(0, 500),
+          source_name: s.metadata?.source || null,
+          chunk_index: s.metadata?.chunk_index ?? null,
+        }));
+        setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, sources: formatted } : m));
+        setLoading(false);
+        setStreaming(true);
+      },
+      onToken: (token) => {
+        setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: m.content + token } : m));
+      },
+      onDone: () => {
+        setLoading(false);
+        setStreaming(false);
+        abortRef.current = null;
+      },
+      onError: (err) => {
+        setMessages(prev => prev.map(m =>
+          m.id === aiMsgId ? { ...m, content: m.content || `抱歉，提问失败：${err}` } : m
+        ));
+        setLoading(false);
+        setStreaming(false);
+        abortRef.current = null;
+      },
+    });
+    abortRef.current = controller;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -85,6 +108,8 @@ export default function QA() {
     '公路隧道防水设计要求有哪些？',
   ];
 
+  const isActive = loading || streaming;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px - 48px)', maxWidth: 860, margin: '0 auto' }}>
       {/* Header */}
@@ -92,7 +117,7 @@ export default function QA() {
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 600, color: '#2C3E50', marginBottom: 4 }}>
             知识问答
-            <span style={{ background: '#FFF8E6', color: '#D4A843', fontSize: 10, padding: '2px 8px', borderRadius: 3, fontWeight: 500, marginLeft: 8, verticalAlign: 'middle' }}>非流式响应</span>
+            <span style={{ background: '#EDFAF2', color: '#6B9E7A', fontSize: 10, padding: '2px 8px', borderRadius: 3, fontWeight: 500, marginLeft: 8, verticalAlign: 'middle' }}>流式响应</span>
           </h1>
           <p style={{ fontSize: 13, color: '#7F8C8D' }}>基于课程知识库，随时向 AI 提问（对话记录仅保存于当前页面）</p>
         </div>
@@ -143,11 +168,18 @@ export default function QA() {
               }}>
                 {msg.role === 'user' ? (
                   <span>{msg.content}</span>
-                ) : (
+                ) : msg.content ? (
                   <div style={{ color: '#2C3E50' }}>
                     <MarkdownRenderer content={msg.content} />
+                    {streaming && msg.id === messages[messages.length - 1]?.id && (
+                      <span style={{
+                        display: 'inline-block', width: 2, height: 16, background: '#4A6FA5',
+                        marginLeft: 2, verticalAlign: 'text-bottom',
+                        animation: 'blink 1s step-end infinite',
+                      }} />
+                    )}
                   </div>
-                )}
+                ) : null}
               </div>
 
               {/* Sources */}
@@ -177,7 +209,7 @@ export default function QA() {
           </div>
         ))}
 
-        {loading && (
+        {loading && !streaming && (
           <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
             <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#2C3A47', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <Bot size={16} color="white" />
@@ -219,12 +251,12 @@ export default function QA() {
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim() || loading}
+            disabled={!input.trim() || isActive}
             style={{
               width: 42, height: 42, border: 'none', borderRadius: 10,
-              background: !input.trim() || loading ? '#E8ECF0' : '#4A6FA5',
-              color: !input.trim() || loading ? '#A4B0BE' : '#FFFFFF',
-              cursor: !input.trim() || loading ? 'not-allowed' : 'pointer',
+              background: !input.trim() || isActive ? '#E8ECF0' : '#4A6FA5',
+              color: !input.trim() || isActive ? '#A4B0BE' : '#FFFFFF',
+              cursor: !input.trim() || isActive ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >

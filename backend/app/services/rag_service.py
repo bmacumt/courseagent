@@ -1,5 +1,6 @@
 """RAG service: wraps local PipelineManager with business context."""
 import logging
+from typing import AsyncGenerator
 
 from app.config import CHROMA_PATH
 from app.db.models import Document
@@ -45,3 +46,8 @@ class RAGService:
     async def query(self, question: str) -> dict:
         """RAG query: global search across all documents."""
         return await self.manager.query(question)
+
+    async def stream_query(self, question: str) -> AsyncGenerator[str, None]:
+        """RAG streaming query."""
+        async for event in self.manager.stream_query(question):
+            yield event

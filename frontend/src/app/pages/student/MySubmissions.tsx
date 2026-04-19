@@ -52,7 +52,7 @@ export default function MySubmissions() {
   };
 
   const handleDownloadAttachment = (submissionId: number) => {
-    window.open(studentApi.getAttachmentUrl(submissionId));
+    studentApi.downloadAttachment(submissionId).catch(() => alert('下载失败'));
   };
 
   const formatTime = (d: string | null) => {

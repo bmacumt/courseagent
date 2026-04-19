@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import AsyncGenerator
 
 from openai import AsyncOpenAI
 
@@ -33,3 +34,23 @@ class LLMClient:
             max_tokens=max_tokens,
         )
         return resp.choices[0].message.content
+
+    async def async_stream_chat(
+        self,
+        system: str,
+        messages: list[dict],
+        temperature: float = 0.1,
+        max_tokens: int = 2048,
+    ) -> AsyncGenerator[str, None]:
+        all_messages = [{"role": "system", "content": system}] + messages
+        stream = await self.client.chat.completions.create(
+            model=self.model,
+            messages=all_messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=True,
+        )
+        async for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta
