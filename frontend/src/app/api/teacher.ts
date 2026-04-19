@@ -24,6 +24,11 @@ export async function uploadDocument(title: string, file: File, docType = 'book'
   return res.data;
 }
 
+export async function parseDocument(id: number): Promise<{ status: string; doc_id: number }> {
+  const res = await client.post<{ status: string; doc_id: number }>(`/teacher/knowledge/${id}/parse`);
+  return res.data;
+}
+
 export async function deleteDocument(id: number): Promise<void> {
   await client.delete(`/teacher/knowledge/${id}`);
 }

@@ -66,6 +66,7 @@ export interface DocumentResponse {
   doc_type: string;
   owner_id: number;
   chunk_count: number;
+  parse_status: string;
   uploaded_at: string | null;
 }
 

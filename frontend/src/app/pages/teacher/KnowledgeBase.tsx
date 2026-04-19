@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Upload, Trash2, FileText, Loader2, CheckCircle, Plus, Database } from 'lucide-react';
+import { Trash2, FileText, Loader2, CheckCircle, Plus, Database, Play, RefreshCw } from 'lucide-react';
 import * as teacherApi from '../../api/teacher';
 import type { DocumentResponse } from '../../api/types';
 import { ConfirmDialog, Modal } from '../../components/shared/ConfirmDialog';
@@ -27,6 +27,7 @@ export default function KnowledgeBase() {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [formError, setFormError] = useState('');
+  const [parsingIds, setParsingIds] = useState<Set<number>>(new Set());
 
   const fetchDocs = () => {
     teacherApi.getDocuments()
@@ -48,14 +49,8 @@ export default function KnowledgeBase() {
     setFormError('');
     setUploading(true);
     try {
-      const resp = await teacherApi.uploadDocument(uploadTitle, uploadFile, uploadType);
-      setUploading(false);
-      if (resp.chunk_count === 0) {
-        setUploadSuccess(false);
-        setFormError('文档已保存但解析失败（分块数为 0）。请在"系统配置"中检查 API Key 是否正确配置。');
-      } else {
-        setUploadSuccess(true);
-      }
+      await teacherApi.uploadDocument(uploadTitle, uploadFile, uploadType);
+      setUploadSuccess(true);
       setTimeout(() => {
         setUploadSuccess(false);
         setUploadModal(false);
@@ -63,11 +58,34 @@ export default function KnowledgeBase() {
         setUploadFile(null);
         setUploadType('book');
         fetchDocs();
-      }, 1500);
+      }, 1000);
     } catch (err) {
       console.error('Upload failed:', err);
+      setFormError('上传失败: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
       setUploading(false);
-      alert('上传失败');
+    }
+  };
+
+  const handleParse = async (doc: DocumentResponse) => {
+    setParsingIds(prev => new Set(prev).add(doc.id));
+    try {
+      await teacherApi.parseDocument(doc.id);
+      // Poll until done
+      const poll = setInterval(() => {
+        teacherApi.getDocuments().then((newDocs: DocumentResponse[]) => {
+          const updated = newDocs.find((d: DocumentResponse) => d.id === doc.id);
+          if (updated && updated.parse_status !== 'parsing') {
+            clearInterval(poll);
+            setParsingIds(prev => { const s = new Set(prev); s.delete(doc.id); return s; });
+            setDocs(newDocs);
+          }
+        });
+      }, 3000);
+    } catch (err) {
+      console.error('Parse failed:', err);
+      setParsingIds(prev => { const s = new Set(prev); s.delete(doc.id); return s; });
+      alert('解析失败: ' + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -142,14 +160,21 @@ export default function KnowledgeBase() {
             </tr>
           </thead>
           <tbody>
-            {docs.map((doc, i) => {
+            {docs.map((doc: DocumentResponse, i: number) => {
               const cfg = docTypeConfig[doc.doc_type] || docTypeConfig.other;
+              const isParsing = doc.parse_status === 'parsing' || parsingIds.has(doc.id);
+              const isParsed = doc.parse_status === 'parsed';
+              const isFailed = doc.parse_status === 'failed';
               return (
                 <tr key={doc.id} style={{ background: i % 2 === 1 ? '#FAFBFC' : '#FFFFFF' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#F0F6FF')}
                   onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 1 ? '#FAFBFC' : '#FFFFFF')}>
                   <td style={{ padding: '14px 18px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                        background: isParsed ? '#6B9E7A' : isParsing ? '#D4A843' : isFailed ? '#C46B6B' : '#A4B0BE',
+                        boxShadow: isParsing ? '0 0 4px #D4A843' : 'none',
+                      }} />
                       <div style={{ width: 32, height: 32, borderRadius: 8, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <FileText size={15} color={cfg.color} />
                       </div>
@@ -161,26 +186,64 @@ export default function KnowledgeBase() {
                   </td>
                   <td style={{ padding: '14px 18px', fontSize: 13, color: '#7F8C8D' }}>{doc.filename}</td>
                   <td style={{ padding: '14px 18px' }}>
-                    {doc.chunk_count === 0 ? (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: '#D4A843' }}>0</span>
-                        <span style={{ background: '#FFF8E6', color: '#D4A843', fontSize: 10, padding: '1px 6px', borderRadius: 3, fontWeight: 500 }}>未解析</span>
+                    {isParsing ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <Loader2 size={13} className="animate-spin" color="#D4A843" />
+                        <span style={{ fontSize: 13, color: '#D4A843' }}>解析中...</span>
                       </span>
+                    ) : isParsed ? (
+                      <span style={{ fontSize: 14, fontWeight: 600, color: '#2C3E50' }}>{doc.chunk_count}<span style={{ fontSize: 12, color: '#A4B0BE', marginLeft: 4, fontWeight: 400 }}>块</span></span>
                     ) : (
-                      <>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: '#2C3E50' }}>{doc.chunk_count}</span>
-                        <span style={{ fontSize: 12, color: '#A4B0BE', marginLeft: 4 }}>块</span>
-                      </>
+                      <span style={{ fontSize: 13, color: '#A4B0BE' }}>—</span>
                     )}
                   </td>
                   <td style={{ padding: '14px 18px', fontSize: 12, color: '#A4B0BE' }}>{formatDate(doc.uploaded_at)}</td>
                   <td style={{ padding: '14px 18px' }}>
-                    <button
-                      onClick={() => setDeleteTarget(doc)}
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', border: '1px solid #FFCCCC', borderRadius: 5, background: '#FFEAEA', color: '#C46B6B', cursor: 'pointer', fontSize: 12 }}
-                    >
-                      <Trash2 size={13} /> 删除
-                    </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {!isParsed && (
+                        <button
+                          onClick={() => handleParse(doc)}
+                          disabled={isParsing}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
+                            border: isParsing ? '1px solid #E8ECF0' : '1px solid #B8D4E8',
+                            borderRadius: 5,
+                            background: isParsing ? '#F7F8FA' : '#EBF3FF',
+                            color: isParsing ? '#A4B0BE' : '#4A6FA5',
+                            cursor: isParsing ? 'not-allowed' : 'pointer',
+                            fontSize: 12,
+                          }}
+                        >
+                          {isParsing ? <><Loader2 size={13} className="animate-spin" /> 解析中</> : isFailed ? <><RefreshCw size={13} /> 重新解析</> : <><Play size={13} /> 解析</>}
+                        </button>
+                      )}
+                      {isParsed && (
+                        <button
+                          onClick={() => handleParse(doc)}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
+                            border: '1px solid #E8ECF0', borderRadius: 5,
+                            background: '#F7F8FA', color: '#7A8F9E',
+                            cursor: 'pointer', fontSize: 12,
+                          }}
+                        >
+                          <RefreshCw size={13} /> 重新解析
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setDeleteTarget(doc)}
+                        disabled={isParsing}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
+                          border: '1px solid #FFCCCC', borderRadius: 5,
+                          background: '#FFEAEA', color: '#C46B6B',
+                          cursor: isParsing ? 'not-allowed' : 'pointer', fontSize: 12,
+                          opacity: isParsing ? 0.5 : 1,
+                        }}
+                      >
+                        <Trash2 size={13} /> 删除
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -215,7 +278,7 @@ export default function KnowledgeBase() {
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <CheckCircle size={48} color="#6B9E7A" style={{ margin: '0 auto 16px', display: 'block' }} />
             <div style={{ fontSize: 16, fontWeight: 600, color: '#2C3E50', marginBottom: 8 }}>上传成功！</div>
-            <div style={{ fontSize: 13, color: '#7F8C8D' }}>文档已解析分块并写入知识库</div>
+            <div style={{ fontSize: 13, color: '#7F8C8D' }}>请在文档列表中点击「解析」按钮开始处理</div>
           </div>
         ) : (
           <>
@@ -238,16 +301,6 @@ export default function KnowledgeBase() {
               <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#2C3E50', marginBottom: 6 }}>PDF 文件 <span style={{ color: '#C46B6B' }}>*</span></label>
               <FileUploader accept=".pdf" maxSizeMB={50} onFileChange={setUploadFile} description="仅支持 .pdf 格式，建议文件大小不超过 50MB" />
             </div>
-            {uploading && (
-              <div style={{ marginTop: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#7F8C8D', marginBottom: 8 }}>
-                  <span>MinerU 解析并分块中...</span>
-                </div>
-                <div style={{ height: 6, background: '#E8ECF0', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: '60%', background: '#4A6FA5', borderRadius: 3, animation: 'progress 1.5s ease-in-out infinite' }} />
-                </div>
-              </div>
-            )}
           </>
         )}
       </Modal>

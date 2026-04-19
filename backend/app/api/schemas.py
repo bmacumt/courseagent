@@ -91,6 +91,7 @@ class DocumentResponse(BaseModel):
     doc_type: str
     owner_id: int
     chunk_count: int
+    parse_status: str = "pending"
     uploaded_at: datetime | None = None
 
     model_config = {"from_attributes": True}

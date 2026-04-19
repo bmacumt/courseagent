@@ -7,7 +7,7 @@ import os
 import shutil
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,7 +55,7 @@ def _build_criteria_json(req_criteria) -> str:
 @router.post("/knowledge", response_model=DocumentResponse)
 async def upload_document(
     title: str = Form(...),
-    doc_type: str = Form("specification"),
+    doc_type: str = Form("book"),
     file: UploadFile = File(...),
     current_user: User = Depends(require_teacher),
     session: AsyncSession = Depends(get_session),
@@ -69,34 +69,75 @@ async def upload_document(
     with open(save_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    chunk_count = 0
-    doc_uuid = uuid.uuid4().hex
-    ingest_error = None
-    try:
-        rag = RAGService()
-        result = rag.manager.ingest_pdf(save_path, doc_type=doc_type)
-        if result.get("status") == "ok":
-            chunk_count = result["num_chunks"]
-            doc_uuid = result["doc_id"]
-        else:
-            ingest_error = result.get("error", "Unknown error")
-    except Exception as e:
-        ingest_error = str(e)
-        logger.warning("RAG ingestion skipped for %s: %s", file.filename, ingest_error)
-
     doc = Document(
-        doc_uuid=doc_uuid,
+        doc_uuid=uuid.uuid4().hex,
         filename=file.filename,
         title=title,
         doc_type=doc_type,
         owner_id=current_user.id,
-        chunk_count=chunk_count,
+        chunk_count=0,
+        parse_status="pending",
         file_path=save_path,
     )
     session.add(doc)
     await session.commit()
     await session.refresh(doc)
     return doc
+
+
+async def _run_parse_background(doc_id: int):
+    """Background task: parse a document (MinerU + chunk + embed)."""
+    from app.db.engine import async_session
+    async with async_session() as session:
+        doc = await session.get(Document, doc_id)
+        if not doc or not os.path.exists(doc.file_path):
+            return
+
+        doc.parse_status = "parsing"
+        await session.commit()
+
+        try:
+            rag = RAGService()
+            result = rag.manager.ingest_pdf(doc.file_path, doc_id=doc.doc_uuid, doc_type=doc.doc_type)
+            if result.get("status") == "ok":
+                doc.chunk_count = result["num_chunks"]
+                doc.parse_status = "parsed"
+            else:
+                doc.parse_status = "failed"
+                logger.warning("Parse failed for doc %s: %s", doc_id, result.get("error"))
+        except Exception as e:
+            doc.parse_status = "failed"
+            logger.warning("Parse error for doc %s: %s", doc_id, e)
+
+        await session.commit()
+
+
+@router.post("/knowledge/{doc_id}/parse")
+async def parse_document(
+    doc_id: int,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(require_teacher),
+    session: AsyncSession = Depends(get_session),
+):
+    doc = await session.get(Document, doc_id)
+    if not doc or doc.owner_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if doc.parse_status == "parsing":
+        raise HTTPException(status_code=409, detail="Already parsing")
+    if not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=400, detail="File not found on disk")
+
+    # Delete old chunks if re-parsing
+    if doc.parse_status == "parsed":
+        rag = RAGService()
+        rag.delete_document(doc.doc_uuid)
+        doc.chunk_count = 0
+
+    doc.parse_status = "parsing"
+    await session.commit()
+
+    background_tasks.add_task(_run_parse_background, doc_id)
+    return {"status": "parsing", "doc_id": doc_id}
 
 
 @router.get("/knowledge", response_model=list[DocumentResponse])

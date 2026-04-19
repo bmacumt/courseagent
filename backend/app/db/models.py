@@ -36,6 +36,7 @@ class Document(Base):
     doc_type: Mapped[str] = mapped_column(String(50), default="specification")
     owner_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     chunk_count: Mapped[int] = mapped_column(Integer, default=0)
+    parse_status: Mapped[str] = mapped_column(String(20), default="pending")  # pending / parsing / parsed / failed
     file_path: Mapped[str] = mapped_column(String(512), nullable=False)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
