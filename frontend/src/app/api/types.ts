@@ -23,7 +23,6 @@ export interface UserResponse {
 // Admin
 export interface CreateUserRequest {
   username: string;
-  password: string;
   role?: string;
   real_name?: string | null;
   student_id?: string | null;

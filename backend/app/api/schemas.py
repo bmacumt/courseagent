@@ -35,7 +35,6 @@ class UserResponse(BaseModel):
 
 class CreateUserRequest(BaseModel):
     username: str
-    password: str
     role: str = "student"
     real_name: str | None = None
     student_id: str | None = None

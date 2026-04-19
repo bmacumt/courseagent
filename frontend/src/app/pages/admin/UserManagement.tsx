@@ -9,7 +9,6 @@ const PAGE_SIZE = 8;
 
 interface UserFormData {
   username: string;
-  password: string;
   role: Role;
   real_name: string;
   student_id: string;
@@ -17,7 +16,7 @@ interface UserFormData {
 }
 
 const emptyForm: UserFormData = {
-  username: '', password: '', role: 'student',
+  username: '', role: 'student',
   real_name: '', student_id: '', class_name: '',
 };
 
@@ -87,26 +86,23 @@ export default function UserManagement() {
   };
   const openEdit = (u: UserResponse) => {
     setEditUser(u);
-    setForm({ username: u.username, password: '', role: u.role as Role, real_name: u.real_name || '', student_id: u.student_id || '', class_name: u.class_name || '' });
+    setForm({ username: u.username, role: u.role as Role, real_name: u.real_name || '', student_id: u.student_id || '', class_name: u.class_name || '' });
     setFormError('');
     setEditModal(true);
   };
 
   const handleSave = async () => {
     if (!form.username) { setFormError('用户名不能为空'); return; }
-    if (!editUser && !form.password) { setFormError('密码不能为空'); return; }
 
     try {
       if (editUser) {
         await adminApi.updateUser(editUser.id, {
           real_name: form.real_name || undefined,
           class_name: form.class_name || undefined,
-          password: form.password || undefined,
         });
       } else {
         await adminApi.createUser({
           username: form.username,
-          password: form.password,
           role: form.role,
           real_name: form.real_name || null,
           student_id: form.student_id || null,
@@ -207,7 +203,7 @@ export default function UserManagement() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#F7F8FA' }}>
-              {['姓名', '用户名', '角色', '学号', '班级', '注册时间', '操作'].map(h => (
+              {['姓名', '用户名', '角色', '学号（工号）', '班级', '注册状态', '操作'].map(h => (
                 <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#7F8C8D', borderBottom: '1px solid #F0F2F5' }}>{h}</th>
               ))}
             </tr>
@@ -285,14 +281,14 @@ export default function UserManagement() {
         }
       >
         {formError && <div style={{ background: '#FFEAEA', border: '1px solid #FFCCCC', borderRadius: 6, padding: '8px 12px', fontSize: 13, color: '#C46B6B', marginBottom: 16 }}>{formError}</div>}
-        <FormField label="用户名" required>
-          <input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} disabled={!!editUser} style={{ ...inputStyle, background: editUser ? '#F7F8FA' : '#FFFFFF' }} placeholder="登录用户名" />
-        </FormField>
         {!editUser && (
-          <FormField label="密码" required>
-            <input type="password" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} style={inputStyle} placeholder="登录密码" />
-          </FormField>
+          <div style={{ background: '#FFF8E8', border: '1px solid #FFE0A3', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: '#D4A843', marginBottom: 16 }}>
+            添加后用户需自行注册设置密码才能登录
+          </div>
         )}
+        <FormField label="用户名" required>
+          <input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} disabled={!!editUser} style={{ ...inputStyle, background: editUser ? '#F7F8FA' : '#FFFFFF' }} placeholder={form.role === 'student' ? '学号' : form.role === 'teacher' ? '工号' : '用户名'} />
+        </FormField>
         <FormField label="角色">
           <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value as Role }))} disabled={!!editUser} style={{ ...inputStyle, cursor: 'pointer', background: editUser ? '#F7F8FA' : '#FFFFFF' }}>
             <option value="student">学生</option>
@@ -303,15 +299,13 @@ export default function UserManagement() {
         <FormField label="真实姓名">
           <input value={form.real_name} onChange={e => setForm(f => ({ ...f, real_name: e.target.value }))} style={inputStyle} placeholder="真实姓名（选填）" />
         </FormField>
+        <FormField label={form.role === 'teacher' ? '工号' : '学号'}>
+          <input value={form.student_id} onChange={e => setForm(f => ({ ...f, student_id: e.target.value }))} style={inputStyle} placeholder={form.role === 'teacher' ? '工号（选填）' : '学号（选填）'} />
+        </FormField>
         {form.role === 'student' && (
-          <>
-            <FormField label="学号">
-              <input value={form.student_id} onChange={e => setForm(f => ({ ...f, student_id: e.target.value }))} style={inputStyle} placeholder="学号（选填）" />
-            </FormField>
-            <FormField label="班级">
-              <input value={form.class_name} onChange={e => setForm(f => ({ ...f, class_name: e.target.value }))} style={inputStyle} placeholder="班级（选填）" />
-            </FormField>
-          </>
+          <FormField label="班级">
+            <input value={form.class_name} onChange={e => setForm(f => ({ ...f, class_name: e.target.value }))} style={inputStyle} placeholder="班级（选填）" />
+          </FormField>
         )}
       </Modal>
 

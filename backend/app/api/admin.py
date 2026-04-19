@@ -37,10 +37,11 @@ async def create_user(
 
     user = User(
         username=req.username,
-        password_hash=hash_password(req.password),
+        password_hash="",
         role=req.role,
+        is_registered=False,
         real_name=req.real_name,
-        student_id=req.student_id if req.role == "student" else None,
+        student_id=req.student_id,
         class_name=req.class_name,
     )
     session.add(user)
