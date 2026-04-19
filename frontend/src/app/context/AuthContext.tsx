@@ -12,7 +12,7 @@ export interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (username: string, email: string, code: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isLoggedIn: boolean;
 }
@@ -56,9 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('tunnel_auth_user');
   }, []);
 
-  const registerFn = useCallback(async (username: string, password: string) => {
+  const registerFn = useCallback(async (username: string, email: string, code: string, password: string) => {
     try {
-      const tokenRes = await authApi.register(username, password);
+      const tokenRes = await authApi.register(username, email, code, password);
       localStorage.setItem('tunnel_auth_token', tokenRes.access_token);
 
       const me = await authApi.getMe();

@@ -43,6 +43,7 @@ async def create_user(
         real_name=req.real_name,
         student_id=req.student_id,
         class_name=req.class_name,
+        email=req.email,
     )
     session.add(user)
     await session.commit()

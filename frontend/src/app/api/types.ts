@@ -17,6 +17,7 @@ export interface UserResponse {
   real_name: string | null;
   student_id: string | null;
   class_name: string | null;
+  email: string | null;
   created_at: string | null;
 }
 

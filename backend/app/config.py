@@ -18,3 +18,10 @@ CHROMA_PATH: str = os.getenv("CHROMA_PATH", "./data/chroma")
 # Uploads
 UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./data/uploads")
 SUBMISSION_DIR: str = os.getenv("SUBMISSION_DIR", "./data/uploads/submissions")
+
+# Email / SMTP
+SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+SMTP_PORT: int = int(os.getenv("SMTP_PORT", "465"))
+SMTP_USER: str = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "课程智能助教")

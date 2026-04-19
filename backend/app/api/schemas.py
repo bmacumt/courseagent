@@ -12,7 +12,18 @@ class LoginRequest(BaseModel):
 
 class RegisterRequest(BaseModel):
     username: str
+    email: str = Field(..., pattern=r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+    code: str = Field(..., min_length=6, max_length=6)
     password: str
+
+class SendCodeRequest(BaseModel):
+    email: str = Field(..., pattern=r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+    purpose: str = Field(..., pattern=r'^(register|reset_password)$')
+
+class ResetPasswordRequest(BaseModel):
+    email: str = Field(..., pattern=r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+    code: str = Field(..., min_length=6, max_length=6)
+    new_password: str
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -26,6 +37,7 @@ class UserResponse(BaseModel):
     real_name: str | None = None
     student_id: str | None = None
     class_name: str | None = None
+    email: str | None = None
     created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
@@ -39,6 +51,7 @@ class CreateUserRequest(BaseModel):
     real_name: str | None = None
     student_id: str | None = None
     class_name: str | None = None
+    email: str | None = None
 
 class UpdateUserRequest(BaseModel):
     real_name: str | None = None
