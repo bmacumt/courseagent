@@ -16,10 +16,9 @@ type AssignmentItem = AssignmentSummary & {
 interface Dimension { name: string; label: string; weight: number; description: string; }
 
 const defaultDimensions: Dimension[] = [
-  { name: 'accuracy', label: '准确性', weight: 0.3, description: '内容是否正确，技术要点是否准确' },
-  { name: 'completeness', label: '完整性', weight: 0.25, description: '是否覆盖题目的主要要点' },
-  { name: 'compliance', label: '规范性', weight: 0.25, description: '是否正确引用相关行业规范' },
-  { name: 'innovation', label: '创新性', weight: 0.2, description: '是否有独立思考和创新分析' },
+  { name: 'accuracy', label: '准确性', weight: 0.4, description: '内容是否正确，技术要点是否准确。引用知识库知识点可加分' },
+  { name: 'completeness', label: '完整性', weight: 0.35, description: '是否覆盖题目的主要要点' },
+  { name: 'innovation', label: '创新性', weight: 0.25, description: '是否有独立思考和创新分析' },
 ];
 
 const inputStyle = {
@@ -264,7 +263,7 @@ export default function Assignments() {
           <label style={{ fontSize: 13, fontWeight: 500, color: '#2C3E50' }}>评分标准</label>
           <div style={{ display: 'flex', gap: 16, marginTop: 8, marginBottom: 12 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
-              <input type="radio" checked={!useCustomDims} onChange={() => setUseCustomDims(false)} /> 默认（准确性 30% + 完整性 25% + 规范性 25% + 创新性 20%）
+              <input type="radio" checked={!useCustomDims} onChange={() => setUseCustomDims(false)} /> 默认（准确性 40% + 完整性 35% + 创新性 25%）
             </label>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, marginBottom: 12 }}>

@@ -21,25 +21,19 @@ DEFAULT_CRITERIA = GradingCriteria(
         DimensionConfig(
             name="accuracy",
             label="准确性",
-            weight=0.30,
-            description="内容是否正确，技术要点是否准确无误",
+            weight=0.40,
+            description="内容是否正确，技术要点是否准确无误。若学生答案引用了知识库中的相关知识点、规范标准或技术规程，应给予更高评分",
         ),
         DimensionConfig(
             name="completeness",
             label="完整性",
-            weight=0.25,
+            weight=0.35,
             description="是否覆盖了题目要求的所有要点，有无遗漏",
-        ),
-        DimensionConfig(
-            name="compliance",
-            label="规范性",
-            weight=0.25,
-            description="是否引用了相关的规范标准或技术规程",
         ),
         DimensionConfig(
             name="innovation",
             label="创新性",
-            weight=0.20,
+            weight=0.25,
             description="是否有自己的思考、独特见解或创新观点",
         ),
     ]

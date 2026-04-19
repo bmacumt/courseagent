@@ -36,7 +36,7 @@ class GradingAgent:
         logger.info(f"[grade] Scoring {len(criteria.dimensions)} dimensions")
         dimension_tasks = []
         for dim in criteria.dimensions:
-            dim_regulations = regulations_text if dim.name == "compliance" else None
+            dim_regulations = regulations_text if dim.name == "accuracy" else None
             dimension_tasks.append(
                 score_dimension(
                     self.llm,

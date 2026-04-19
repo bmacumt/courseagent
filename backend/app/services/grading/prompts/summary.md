@@ -15,7 +15,7 @@
 {{ total_score }} / {{ max_score }}
 
 {% if regulations_summary %}
-## 规范引用情况
+## 知识库引用情况
 {{ regulations_summary }}
 {% endif %}
 
