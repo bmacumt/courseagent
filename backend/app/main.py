@@ -17,6 +17,21 @@ async def lifespan(app: FastAPI):
     async with async_session() as session:
         await seed_defaults(session)
         await sync_model_defaults_to_env(session)
+
+        # Seed default admin/teacher/student if DB is fresh
+        from sqlalchemy import select
+        from app.db.models import User
+        from app.auth.jwt import hash_password
+        existing = await session.scalar(select(User).where(User.username == "admin"))
+        if not existing:
+            defaults = [
+                User(username="admin", password_hash=hash_password("admin123"), role="admin", real_name="管理员", is_registered=True),
+                User(username="teacher1", password_hash=hash_password("teacher123"), role="teacher", real_name="张老师", is_registered=True),
+                User(username="student1", password_hash=hash_password("student123"), role="student", real_name="王同学", student_id="2024001", class_name="隧道一班", is_registered=True),
+            ]
+            for u in defaults:
+                session.add(u)
+            await session.commit()
     yield
 
 

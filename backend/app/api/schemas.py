@@ -10,6 +10,10 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -18,6 +22,7 @@ class UserResponse(BaseModel):
     id: int
     username: str
     role: str
+    is_registered: bool = True
     real_name: str | None = None
     student_id: str | None = None
     class_name: str | None = None
@@ -43,7 +48,6 @@ class UpdateUserRequest(BaseModel):
 
 class BatchStudentItem(BaseModel):
     username: str
-    password: str
     real_name: str
     student_id: str
     class_name: str

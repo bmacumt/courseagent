@@ -12,6 +12,7 @@ export interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isLoggedIn: boolean;
 }
@@ -55,8 +56,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('tunnel_auth_user');
   }, []);
 
+  const registerFn = useCallback(async (username: string, password: string) => {
+    try {
+      const tokenRes = await authApi.register(username, password);
+      localStorage.setItem('tunnel_auth_token', tokenRes.access_token);
+
+      const me = await authApi.getMe();
+      const authUser: AuthUser = {
+        id: me.id,
+        username: me.username,
+        role: me.role as Role,
+        real_name: me.real_name,
+      };
+      setUser(authUser);
+      localStorage.setItem('tunnel_auth_user', JSON.stringify(authUser));
+      return { success: true };
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || '注册失败';
+      return { success: false, error: msg };
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoggedIn: !!user }}>
+    <AuthContext.Provider value={{ user, login, register: registerFn, logout, isLoggedIn: !!user }}>
       {children}
     </AuthContext.Provider>
   );

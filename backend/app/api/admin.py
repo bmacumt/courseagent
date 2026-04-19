@@ -73,8 +73,9 @@ async def batch_import_students(
 
             user = User(
                 username=s.username,
-                password_hash=hash_password(s.password),
+                password_hash="",
                 role="student",
+                is_registered=False,
                 real_name=s.real_name,
                 student_id=s.student_id,
                 class_name=s.class_name,

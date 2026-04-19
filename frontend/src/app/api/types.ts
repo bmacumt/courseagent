@@ -13,6 +13,7 @@ export interface UserResponse {
   id: number;
   username: string;
   role: Role;
+  is_registered: boolean;
   real_name: string | null;
   student_id: string | null;
   class_name: string | null;
@@ -31,7 +32,6 @@ export interface CreateUserRequest {
 
 export interface BatchStudentItem {
   username: string;
-  password: string;
   real_name: string;
   student_id: string;
   class_name: string;

@@ -3,37 +3,63 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
+function isValidPassword(pwd: string): boolean {
+  return pwd.length >= 6 && /[A-Za-z]/.test(pwd) && /\d/.test(pwd);
+}
+
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
   const navigate = useNavigate();
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPwd, setConfirmPwd] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username || !password) {
-      setError('请输入用户名和密码');
-      return;
+  const redirectByRole = () => {
+    const storedStr = localStorage.getItem('tunnel_auth_user');
+    if (storedStr) {
+      const user = JSON.parse(storedStr);
+      if (user.role === 'admin') navigate('/admin/dashboard');
+      else if (user.role === 'teacher') navigate('/teacher/dashboard');
+      else navigate('/student/dashboard');
     }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username || !password) { setError('请输入用户名和密码'); return; }
     setLoading(true);
     setError('');
     const result = await login(username, password);
     setLoading(false);
     if (result.success) {
-      const storedStr = localStorage.getItem('tunnel_auth_user');
-      if (storedStr) {
-        const user = JSON.parse(storedStr);
-        if (user.role === 'admin') navigate('/admin/dashboard');
-        else if (user.role === 'teacher') navigate('/teacher/dashboard');
-        else navigate('/student/dashboard');
-      }
+      redirectByRole();
     } else {
       setError(result.error || '登录失败');
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username) { setError('请输入用户名'); return; }
+    if (!isValidPassword(password)) {
+      setError('密码至少6位，必须包含字母和数字');
+      return;
+    }
+    if (password !== confirmPwd) { setError('两次输入的密码不一致'); return; }
+    setLoading(true);
+    setError('');
+    const result = await register(username, password);
+    setLoading(false);
+    if (result.success) {
+      redirectByRole();
+    } else {
+      setError(result.error || '注册失败');
     }
   };
 
@@ -41,6 +67,22 @@ export default function LoginPage() {
     setUsername(u);
     setPassword(p);
   };
+
+  const switchMode = (m: 'login' | 'register') => {
+    setMode(m);
+    setError('');
+    setPassword('');
+    setConfirmPwd('');
+  };
+
+  const inputStyle = (field: string) => ({
+    width: '100%', height: 40, padding: '0 14px',
+    border: `1px solid ${focusedField === field ? '#4A6FA5' : '#DCDFE6'}`,
+    borderRadius: 6, fontSize: 14, color: '#2C3E50',
+    outline: 'none', boxSizing: 'border-box' as const,
+    boxShadow: focusedField === field ? '0 0 0 3px rgba(74,111,165,0.12)' : 'none',
+    transition: 'all 0.2s',
+  });
 
   return (
     <div style={{
@@ -62,7 +104,6 @@ export default function LoginPage() {
       }}
         className="hidden lg:flex"
       >
-        {/* Decorative circles */}
         <div style={{ position: 'absolute', top: -80, right: -80, width: 300, height: 300, borderRadius: '50%', background: 'rgba(74,111,165,0.15)' }} />
         <div style={{ position: 'absolute', bottom: -100, left: -60, width: 400, height: 400, borderRadius: '50%', background: 'rgba(74,111,165,0.08)' }} />
 
@@ -82,7 +123,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right login form */}
+      {/* Right form */}
       <div style={{
         width: '100%', maxWidth: 480,
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -100,10 +141,14 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <h2 style={{ fontSize: 24, fontWeight: 600, color: '#2C3E50', marginBottom: 8 }}>欢迎登录</h2>
-          <p style={{ fontSize: 14, color: '#7F8C8D', marginBottom: 32 }}>使用您的账号密码登录系统</p>
+          <h2 style={{ fontSize: 24, fontWeight: 600, color: '#2C3E50', marginBottom: 8 }}>
+            {mode === 'login' ? '欢迎登录' : '账号注册'}
+          </h2>
+          <p style={{ fontSize: 14, color: '#7F8C8D', marginBottom: 32 }}>
+            {mode === 'login' ? '使用您的账号密码登录系统' : '首次使用请设置密码完成注册'}
+          </p>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={mode === 'login' ? handleLogin : handleRegister}>
             <div style={{ marginBottom: 18 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#2C3E50', marginBottom: 6 }}>用户名</label>
               <input
@@ -112,19 +157,12 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 onFocus={() => setFocusedField('username')}
                 onBlur={() => setFocusedField(null)}
-                placeholder="请输入用户名"
-                style={{
-                  width: '100%', height: 40, padding: '0 14px',
-                  border: `1px solid ${focusedField === 'username' ? '#4A6FA5' : '#DCDFE6'}`,
-                  borderRadius: 6, fontSize: 14, color: '#2C3E50',
-                  outline: 'none', boxSizing: 'border-box',
-                  boxShadow: focusedField === 'username' ? '0 0 0 3px rgba(74,111,165,0.12)' : 'none',
-                  transition: 'all 0.2s',
-                }}
+                placeholder={mode === 'register' ? '请输入学号或工号' : '请输入用户名'}
+                style={inputStyle('username')}
               />
             </div>
 
-            <div style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: mode === 'register' ? 18 : 24 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#2C3E50', marginBottom: 6 }}>密码</label>
               <div style={{ position: 'relative' }}>
                 <input
@@ -133,15 +171,8 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   onFocus={() => setFocusedField('password')}
                   onBlur={() => setFocusedField(null)}
-                  placeholder="请输入密码"
-                  style={{
-                    width: '100%', height: 40, padding: '0 40px 0 14px',
-                    border: `1px solid ${focusedField === 'password' ? '#4A6FA5' : '#DCDFE6'}`,
-                    borderRadius: 6, fontSize: 14, color: '#2C3E50',
-                    outline: 'none', boxSizing: 'border-box',
-                    boxShadow: focusedField === 'password' ? '0 0 0 3px rgba(74,111,165,0.12)' : 'none',
-                    transition: 'all 0.2s',
-                  }}
+                  placeholder={mode === 'register' ? '至少6位，包含字母和数字' : '请输入密码'}
+                  style={{ ...inputStyle('password'), padding: '0 40px 0 14px' }}
                 />
                 <button
                   type="button"
@@ -155,6 +186,21 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+
+            {mode === 'register' && (
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#2C3E50', marginBottom: 6 }}>确认密码</label>
+                <input
+                  type={showPwd ? 'text' : 'password'}
+                  value={confirmPwd}
+                  onChange={(e) => setConfirmPwd(e.target.value)}
+                  onFocus={() => setFocusedField('confirmPwd')}
+                  onBlur={() => setFocusedField(null)}
+                  placeholder="再次输入密码"
+                  style={inputStyle('confirmPwd')}
+                />
+              </div>
+            )}
 
             {error && (
               <div style={{
@@ -177,34 +223,51 @@ export default function LoginPage() {
               }}
             >
               {loading && <Loader2 size={16} className="animate-spin" />}
-              登录
+              {mode === 'login' ? '登录' : '注册'}
             </button>
           </form>
 
-          {/* Quick login hints */}
-          <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #E8ECF0' }}>
-            <div style={{ fontSize: 12, color: '#A4B0BE', marginBottom: 12, textAlign: 'center' }}>演示账号（点击快速填入）</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {[
-                { label: '管理员', user: 'admin', pass: 'admin123', color: '#4A6FA5', bg: '#EBF3FF' },
-                { label: '教师', user: 'teacher1', pass: 'teacher123', color: '#6B8F71', bg: '#EDFAF2' },
-                { label: '学生', user: 'student1', pass: 'student123', color: '#7A8F9E', bg: '#F0F2F5' },
-              ].map((item) => (
-                <button
-                  key={item.label}
-                  onClick={() => quickLogin(item.user, item.pass)}
-                  style={{
-                    flex: 1, padding: '8px 0', background: item.bg,
-                    color: item.color, border: 'none', borderRadius: 6,
-                    fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                    transition: 'opacity 0.2s',
-                  }}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+          {/* Switch mode */}
+          <div style={{ marginTop: 20, textAlign: 'center' }}>
+            {mode === 'login' ? (
+              <span style={{ fontSize: 13, color: '#7F8C8D' }}>
+                没有账号？
+                <button onClick={() => switchMode('register')} style={{ background: 'none', border: 'none', color: '#4A6FA5', cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: 0, marginLeft: 4 }}>去注册</button>
+              </span>
+            ) : (
+              <span style={{ fontSize: 13, color: '#7F8C8D' }}>
+                已有账号？
+                <button onClick={() => switchMode('login')} style={{ background: 'none', border: 'none', color: '#4A6FA5', cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: 0, marginLeft: 4 }}>去登录</button>
+              </span>
+            )}
           </div>
+
+          {/* Quick login hints (login mode only) */}
+          {mode === 'login' && (
+            <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid #E8ECF0' }}>
+              <div style={{ fontSize: 12, color: '#A4B0BE', marginBottom: 12, textAlign: 'center' }}>演示账号（点击快速填入）</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[
+                  { label: '管理员', user: 'admin', pass: 'admin123', color: '#4A6FA5', bg: '#EBF3FF' },
+                  { label: '教师', user: 'teacher1', pass: 'teacher123', color: '#6B8F71', bg: '#EDFAF2' },
+                  { label: '学生', user: 'student1', pass: 'student123', color: '#7A8F9E', bg: '#F0F2F5' },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    onClick={() => quickLogin(item.user, item.pass)}
+                    style={{
+                      flex: 1, padding: '8px 0', background: item.bg,
+                      color: item.color, border: 'none', borderRadius: 6,
+                      fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                      transition: 'opacity 0.2s',
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

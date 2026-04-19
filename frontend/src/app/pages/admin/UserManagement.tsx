@@ -133,13 +133,12 @@ export default function UserManagement() {
   const handleBatchImport = async () => {
     const lines = csvText.trim().split('\n').filter(l => l.trim());
     const students = lines.map((line, i) => {
-      const parts = line.split(',').map(p => p.trim());
+      const parts = line.split(/[,，\t]+|\s{2,}/).map(p => p.trim()).filter(Boolean);
       return {
         username: parts[0] || '',
-        password: parts[1] || '123456',
-        real_name: parts[2] || `学生${i + 1}`,
-        student_id: parts[3] || `S${String(i + 1).padStart(3, '0')}`,
-        class_name: parts[4] || '未分班',
+        real_name: parts[1] || `学生${i + 1}`,
+        student_id: parts[2] || `S${String(i + 1).padStart(3, '0')}`,
+        class_name: parts[3] || '未分班',
       };
     });
 
@@ -230,7 +229,11 @@ export default function UserManagement() {
                 <td style={{ padding: '12px 16px' }}><RoleTag role={u.role} /></td>
                 <td style={{ padding: '12px 16px', fontSize: 13, color: '#7F8C8D' }}>{u.student_id || '—'}</td>
                 <td style={{ padding: '12px 16px', fontSize: 13, color: '#7F8C8D' }}>{u.class_name || '—'}</td>
-                <td style={{ padding: '12px 16px', fontSize: 12, color: '#A4B0BE' }}>{formatDate(u.created_at)}</td>
+                <td style={{ padding: '12px 16px', fontSize: 12, color: '#A4B0BE' }}>
+                  {u.is_registered ? formatDate(u.created_at) : (
+                    <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 4, background: '#FFF8E8', color: '#D4A843', fontSize: 12, fontWeight: 500 }}>未注册</span>
+                  )}
+                </td>
                 <td style={{ padding: '12px 16px' }}>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button onClick={() => openEdit(u)} style={{ padding: '4px 10px', border: '1px solid #E8ECF0', borderRadius: 5, background: '#FFFFFF', color: '#4A6FA5', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -337,9 +340,9 @@ export default function UserManagement() {
         {!batchResult ? (
           <>
             <div style={{ fontSize: 13, color: '#7F8C8D', marginBottom: 12 }}>
-              每行格式：<code style={{ background: '#F7F8FA', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>用户名,密码,姓名,学号,班级</code>
+              每行格式：<code style={{ background: '#F7F8FA', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>用户名,姓名,学号,班级</code>
             </div>
-            <div style={{ fontSize: 12, color: '#A4B0BE', marginBottom: 12 }}>示例：stu_010,123456,张三,2024010,隧道一班</div>
+            <div style={{ fontSize: 12, color: '#A4B0BE', marginBottom: 12 }}>示例：2024001,张三,2024001,隧道一班（支持逗号、中文逗号、Tab分隔）</div>
             <textarea
               value={csvText}
               onChange={e => setCsvText(e.target.value)}

@@ -16,6 +16,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # admin / teacher / student
+    is_registered: Mapped[bool] = mapped_column(Boolean, default=True)
     real_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     student_id: Mapped[str | None] = mapped_column(String(50), nullable=True, unique=True)
     class_name: Mapped[str | None] = mapped_column(String(100), nullable=True)

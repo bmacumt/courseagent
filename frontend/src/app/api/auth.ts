@@ -6,6 +6,11 @@ export async function login(username: string, password: string): Promise<TokenRe
   return res.data;
 }
 
+export async function register(username: string, password: string): Promise<TokenResponse> {
+  const res = await client.post<TokenResponse>('/register', { username, password });
+  return res.data;
+}
+
 export async function getMe(): Promise<UserResponse> {
   const res = await client.get<UserResponse>('/me');
   return res.data;
