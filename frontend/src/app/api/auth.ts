@@ -11,13 +11,23 @@ export async function register(username: string, email: string, code: string, pa
   return res.data;
 }
 
-export async function sendCode(email: string, purpose: 'register' | 'reset_password'): Promise<{ message: string; dev_code?: string }> {
+export async function sendCode(email: string, purpose: 'register' | 'reset_password' | 'change_email'): Promise<{ message: string }> {
   const res = await client.post('/auth/send-code', { email, purpose });
   return res.data;
 }
 
 export async function resetPassword(email: string, code: string, newPassword: string): Promise<{ message: string }> {
   const res = await client.post('/auth/reset-password', { email, code, new_password: newPassword });
+  return res.data;
+}
+
+export async function getProfile(): Promise<UserResponse> {
+  const res = await client.get<UserResponse>('/auth/profile');
+  return res.data;
+}
+
+export async function changeEmail(newEmail: string, code: string): Promise<UserResponse> {
+  const res = await client.post<UserResponse>('/auth/change-email', { new_email: newEmail, code });
   return res.data;
 }
 

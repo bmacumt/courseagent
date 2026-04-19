@@ -14,7 +14,7 @@ from app.db.engine import get_session
 from app.db.models import User
 from app.api.schemas import (
     LoginRequest, RegisterRequest, SendCodeRequest, ResetPasswordRequest,
-    TokenResponse, UserResponse,
+    ChangeEmailRequest, TokenResponse, UserResponse,
 )
 from app.services.email_service import send_verification_email
 from app.services.verification import verification_store
@@ -51,6 +51,11 @@ async def send_code(req: SendCodeRequest, session: AsyncSession = Depends(get_se
         existing = await session.execute(select(User).where(User.email == req.email))
         if not existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="该邮箱未注册")
+
+    elif req.purpose == "change_email":
+        existing = await session.execute(select(User).where(User.email == req.email))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="该邮箱已被使用")
 
     code = verification_store.generate_code(req.purpose, req.email)
     if code is None:
@@ -123,3 +128,28 @@ async def reset_password(req: ResetPasswordRequest, session: AsyncSession = Depe
     await session.commit()
 
     return {"message": "密码重置成功"}
+
+
+@router.get("/auth/profile", response_model=UserResponse)
+async def get_profile(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@router.post("/auth/change-email", response_model=UserResponse)
+async def change_email(
+    req: ChangeEmailRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    if not verification_store.verify_code("change_email", req.new_email, req.code):
+        raise HTTPException(status_code=400, detail="验证码无效或已过期")
+
+    existing = await session.execute(select(User).where(User.email == req.new_email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="该邮箱已被其他用户使用")
+
+    user = await session.get(User, current_user.id)
+    user.email = req.new_email
+    await session.commit()
+    await session.refresh(user)
+    return user

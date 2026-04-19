@@ -18,12 +18,16 @@ class RegisterRequest(BaseModel):
 
 class SendCodeRequest(BaseModel):
     email: str = Field(..., pattern=r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
-    purpose: str = Field(..., pattern=r'^(register|reset_password)$')
+    purpose: str = Field(..., pattern=r'^(register|reset_password|change_email)$')
 
 class ResetPasswordRequest(BaseModel):
     email: str = Field(..., pattern=r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
     code: str = Field(..., min_length=6, max_length=6)
     new_password: str
+
+class ChangeEmailRequest(BaseModel):
+    new_email: str = Field(..., pattern=r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+    code: str = Field(..., min_length=6, max_length=6)
 
 class TokenResponse(BaseModel):
     access_token: str
