@@ -23,7 +23,7 @@ class RAGService:
         session,
     ) -> Document:
         """Ingest PDF via PipelineManager, return Document ORM object (not yet committed)."""
-        result = self.manager.ingest_pdf(pdf_path)
+        result = self.manager.ingest_pdf(pdf_path, doc_type=doc_type)
         if result.get("status") != "ok":
             raise RuntimeError(f"Ingest failed: {result.get('error', 'unknown')}")
 
@@ -43,11 +43,11 @@ class RAGService:
         """Delete from ChromaDB."""
         return self.manager.delete_document(doc_uuid)
 
-    async def query(self, question: str) -> dict:
+    async def query(self, question: str, deep_research: bool = False) -> dict:
         """RAG query: global search across all documents."""
-        return await self.manager.query(question)
+        return await self.manager.query(question, deep_research=deep_research)
 
-    async def stream_query(self, question: str) -> AsyncGenerator[str, None]:
+    async def stream_query(self, question: str, deep_research: bool = False) -> AsyncGenerator[str, None]:
         """RAG streaming query."""
-        async for event in self.manager.stream_query(question):
+        async for event in self.manager.stream_query(question, deep_research=deep_research):
             yield event

@@ -74,7 +74,7 @@ async def upload_document(
     ingest_error = None
     try:
         rag = RAGService()
-        result = rag.manager.ingest_pdf(save_path)
+        result = rag.manager.ingest_pdf(save_path, doc_type=doc_type)
         if result.get("status") == "ok":
             chunk_count = result["num_chunks"]
             doc_uuid = result["doc_id"]

@@ -237,7 +237,7 @@ async def ask_question(
     current_user: User = Depends(require_student),
 ):
     rag = RAGService()
-    result = await rag.query(req.question)
+    result = await rag.query(req.question, deep_research=req.deep_research)
     answer = result.get("answer", "")
     raw_sources = result.get("sources", [])
     source_items = []
@@ -260,7 +260,7 @@ async def stream_question(
 ):
     rag = RAGService()
     return StreamingResponse(
-        rag.stream_query(req.question),
+        rag.stream_query(req.question, deep_research=req.deep_research),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

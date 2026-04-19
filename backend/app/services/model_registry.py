@@ -22,6 +22,7 @@ PROVIDERS: dict[str, dict] = {
         "models": [
             {"name": "deepseek-ai/DeepSeek-V3", "type": "chat", "max_tokens": 8192},
             {"name": "Qwen/Qwen3-8B", "type": "chat", "max_tokens": 8192},
+            {"name": "BAAI/bge-m3", "type": "embedding", "max_tokens": 8192},
             {"name": "BAAI/bge-large-zh-v1.5", "type": "embedding", "max_tokens": 512},
             {"name": "BAAI/bge-large-en-v1.5", "type": "embedding", "max_tokens": 512},
             {"name": "BAAI/bge-reranker-v2-m3", "type": "rerank", "max_tokens": 512},

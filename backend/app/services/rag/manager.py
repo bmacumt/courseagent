@@ -4,12 +4,13 @@ import os
 import uuid
 from typing import AsyncGenerator
 
-from app.services.rag.chunking.laws_chunker import chunk
+from app.services.rag.chunking.dispatcher import dispatch_chunk
 from app.services.rag.chunking.mineru_adapter import mineru_to_sections
 from app.services.rag.llm_client import LLMClient
 from app.services.rag.embedder import Embedder
 from app.services.rag.mineru_client import MinerUClient
 from app.services.rag.qa_chain import QAChain
+from app.services.rag.deep_research_chain import DeepResearchChain
 from app.services.rag.reranker import Reranker
 from app.services.rag.retriever import HybridRetriever
 from app.services.rag.vector_store import VectorStore
@@ -30,10 +31,22 @@ class PipelineManager:
             reranker=self.reranker,
             llm=self.llm,
         )
+        self.deep_research_chain = DeepResearchChain(
+            retriever=self.retriever,
+            embedder=self.embedder,
+            reranker=self.reranker,
+            llm=self.llm,
+            max_depth=2,
+        )
         self.mineru = MinerUClient()
 
-    def ingest_pdf(self, pdf_path: str, doc_id: str | None = None) -> dict:
+    def ingest_pdf(self, pdf_path: str, doc_id: str | None = None, doc_type: str = "book") -> dict:
         """Full ingest pipeline: PDF → parse → chunk → embed → store.
+
+        Args:
+            pdf_path: Path to PDF file
+            doc_id: Optional document ID
+            doc_type: Document type for chunker selection ("laws", "book", "table", "paper", "ppt")
 
         Returns:
             {"doc_id": str, "num_chunks": int, "status": "ok"|"error"}
@@ -47,7 +60,7 @@ class PipelineManager:
 
             # 2. Chunk
             sections = mineru_to_sections(content_list)
-            chunks_result = chunk(sections, lang="zh")
+            chunks_result = dispatch_chunk(sections, doc_type=doc_type, lang="zh")
             chunk_texts = [c for c in chunks_result if c.strip()]
             logger.info(f"[ingest] {len(chunk_texts)} chunks")
 
@@ -71,16 +84,22 @@ class PipelineManager:
             logger.error(f"[ingest] Failed: {e}")
             return {"doc_id": doc_id, "num_chunks": 0, "status": "error", "error": str(e)}
 
-    async def query(self, question: str) -> dict:
+    async def query(self, question: str, deep_research: bool = False) -> dict:
         """Query pipeline: retrieve → rerank → answer."""
-        logger.info(f"[query] {question[:80]}")
+        logger.info(f"[query] {question[:80]} (deep_research={deep_research})")
+        if deep_research:
+            return await self.deep_research_chain.answer(question)
         return await self.qa_chain.answer(question)
 
-    async def stream_query(self, question: str) -> AsyncGenerator[str, None]:
+    async def stream_query(self, question: str, deep_research: bool = False) -> AsyncGenerator[str, None]:
         """Stream query pipeline: retrieve → rerank → stream answer."""
-        logger.info(f"[stream_query] {question[:80]}")
-        async for event in self.qa_chain.stream_answer(question):
-            yield event
+        logger.info(f"[stream_query] {question[:80]} (deep_research={deep_research})")
+        if deep_research:
+            async for event in self.deep_research_chain.stream_answer(question):
+                yield event
+        else:
+            async for event in self.qa_chain.stream_answer(question):
+                yield event
 
     def delete_document(self, doc_id: str) -> bool:
         """Delete a document and all its chunks."""

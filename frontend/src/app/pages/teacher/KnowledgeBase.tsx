@@ -9,6 +9,11 @@ const docTypeConfig: Record<string, { label: string; color: string; bg: string }
   specification: { label: '规范', color: '#4A6FA5', bg: '#EBF3FF' },
   textbook: { label: '教材', color: '#6B8F71', bg: '#EDFAF2' },
   other: { label: '其他', color: '#7A8F9E', bg: '#F0F2F5' },
+  laws: { label: '规范', color: '#4A6FA5', bg: '#EBF3FF' },
+  book: { label: '教材', color: '#6B8F71', bg: '#EDFAF2' },
+  table: { label: '表格', color: '#D4A843', bg: '#FFF8EB' },
+  paper: { label: '论文', color: '#8B5CF6', bg: '#F3F0FF' },
+  ppt: { label: '课件', color: '#6B8F71', bg: '#EDFAF2' },
 };
 
 export default function KnowledgeBase() {
@@ -18,7 +23,7 @@ export default function KnowledgeBase() {
   const [uploadModal, setUploadModal] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadType, setUploadType] = useState<string>('specification');
+  const [uploadType, setUploadType] = useState<string>('book');
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [formError, setFormError] = useState('');
@@ -56,7 +61,7 @@ export default function KnowledgeBase() {
         setUploadModal(false);
         setUploadTitle('');
         setUploadFile(null);
-        setUploadType('specification');
+        setUploadType('book');
         fetchDocs();
       }, 1500);
     } catch (err) {
@@ -105,9 +110,9 @@ export default function KnowledgeBase() {
 
       {/* Stats */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
-        {(['specification', 'textbook', 'other'] as string[]).map(type => {
+        {(['laws', 'book', 'table', 'paper', 'ppt'] as string[]).map(type => {
           const count = docs.filter(d => d.doc_type === type).length;
-          const cfg = docTypeConfig[type];
+          const cfg = docTypeConfig[type] || docTypeConfig.other;
           return (
             <div key={type} style={{ background: '#FFFFFF', borderRadius: 8, border: '1px solid #E8ECF0', padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: cfg.color }} />
@@ -138,7 +143,7 @@ export default function KnowledgeBase() {
           </thead>
           <tbody>
             {docs.map((doc, i) => {
-              const cfg = docTypeConfig[doc.doc_type];
+              const cfg = docTypeConfig[doc.doc_type] || docTypeConfig.other;
               return (
                 <tr key={doc.id} style={{ background: i % 2 === 1 ? '#FAFBFC' : '#FFFFFF' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#F0F6FF')}
@@ -222,9 +227,11 @@ export default function KnowledgeBase() {
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#2C3E50', marginBottom: 6 }}>文档类型</label>
               <select value={uploadType} onChange={e => setUploadType(e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
-                <option value="specification">规范</option>
-                <option value="textbook">教材</option>
-                <option value="other">其他</option>
+                <option value="laws">规范/法规</option>
+                <option value="book">教材/讲义</option>
+                <option value="table">表格</option>
+                <option value="paper">论文</option>
+                <option value="ppt">课件</option>
               </select>
             </div>
             <div>

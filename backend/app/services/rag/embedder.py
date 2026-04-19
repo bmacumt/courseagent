@@ -19,20 +19,22 @@ class Embedder:
         api_key: str | None = None,
         base_url: str | None = None,
         model: str | None = None,
+        max_tokens: int | None = None,
     ):
         self.api_key = api_key or os.getenv("EMBEDDING_API_KEY", "")
         self.base_url = base_url or os.getenv("EMBEDDING_BASE_URL", "https://api.siliconflow.cn/v1")
-        self.model = model or os.getenv("EMBEDDING_MODEL", "BAAI/bge-large-zh-v1.5")
+        self.model = model or os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
+        self.max_tokens = max_tokens or int(os.getenv("EMBEDDING_MAX_TOKENS", "8192"))
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
 
-    def embed_texts(self, texts: list[str], batch_size: int = 32, max_tokens: int = 510) -> list[list[float]]:
+    def embed_texts(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:
         """Embed a list of texts in batches. Truncates texts exceeding max_tokens."""
         enc = tiktoken.get_encoding("cl100k_base")
         truncated = []
         for t in texts:
             tokens = enc.encode(t)
-            if len(tokens) > max_tokens:
-                t = enc.decode(tokens[:max_tokens])
+            if len(tokens) > self.max_tokens:
+                t = enc.decode(tokens[:self.max_tokens])
             truncated.append(t)
 
         all_embeddings = []

@@ -241,6 +241,7 @@ class ReportResponse(BaseModel):
 
 class QARequest(BaseModel):
     question: str
+    deep_research: bool = False
 
 class QASourceItem(BaseModel):
     index: int

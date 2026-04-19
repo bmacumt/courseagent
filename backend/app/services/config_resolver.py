@@ -16,6 +16,7 @@ MODEL_TYPE_ENV_MAP = {
         "api_key": "EMBEDDING_API_KEY",
         "base_url": "EMBEDDING_BASE_URL",
         "model": "EMBEDDING_MODEL",
+        "max_tokens": "EMBEDDING_MAX_TOKENS",
     },
     "rerank": {
         "api_key": "RERANKER_API_KEY",
@@ -31,7 +32,7 @@ MODEL_TYPE_ENV_DEFAULTS = {
     },
     "embedding": {
         "base_url": "https://api.siliconflow.cn/v1",
-        "model": "BAAI/bge-large-zh-v1.5",
+        "model": "BAAI/bge-m3",
     },
     "rerank": {
         "base_url": "https://api.siliconflow.cn/v1",
@@ -90,6 +91,8 @@ async def sync_model_defaults_to_env(session: AsyncSession) -> None:
         os.environ[env_map["api_key"]] = provider.api_key
         os.environ[env_map["base_url"]] = provider.base_url
         os.environ[env_map["model"]] = mc.model_name
+        if "max_tokens" in env_map:
+            os.environ[env_map["max_tokens"]] = str(mc.max_tokens)
         synced += 1
     if synced:
         import logging

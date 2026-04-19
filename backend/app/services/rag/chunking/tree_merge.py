@@ -3,6 +3,41 @@
 # Removed: rag_tokenizer, RAGFlowPdfParser dependencies
 import re
 from app.services.rag.chunking.patterns import BULLET_PATTERN
+from app.services.rag.token_utils import num_tokens_from_string
+
+
+def _emit_chunk(text: str, token_limit: int) -> list[str]:
+    """Emit a chunk, splitting if it exceeds token_limit. Keeps equation lines with neighbors."""
+    if token_limit <= 0 or num_tokens_from_string(text) <= token_limit:
+        return [text] if text.strip() else []
+
+    lines = text.split("\n")
+    chunks = []
+    current_lines = []
+    current_tokens = 0
+
+    for line in lines:
+        line_tokens = num_tokens_from_string(line)
+
+        # Single line exceeds limit — force include it in its own chunk
+        if line_tokens > token_limit and not current_lines:
+            chunks.append(line)
+            continue
+
+        would_exceed = current_tokens + line_tokens > token_limit and current_lines
+
+        if would_exceed:
+            chunks.append("\n".join(current_lines))
+            current_lines = []
+            current_tokens = 0
+
+        current_lines.append(line)
+        current_tokens += line_tokens
+
+    if current_lines:
+        chunks.append("\n".join(current_lines))
+
+    return [c for c in chunks if c.strip()]
 
 
 class Node:
@@ -84,13 +119,14 @@ def not_title(txt):
     return re.search(r"[,;，。；！!]", txt)
 
 
-def tree_merge(bull, sections, depth):
+def tree_merge(bull, sections, depth, token_limit=0):
     """Build hierarchical chunks from numbered sections.
 
     Args:
         bull: Pattern index from bullets_category(), -1 if no pattern detected
         sections: list of (text, layout_type) tuples
         depth: hierarchy depth to split at (default 2)
+        token_limit: max tokens per chunk (0 = no limit)
     """
     if not sections or bull < 0:
         return sections
@@ -136,7 +172,14 @@ def tree_merge(bull, sections, depth):
     root = Node(level=0, depth=target_level, texts=[])
     root.build_tree(lines)
 
-    return [element for element in root.get_tree() if element]
+    raw_chunks = [element for element in root.get_tree() if element]
+    if token_limit <= 0:
+        return raw_chunks
+
+    result = []
+    for c in raw_chunks:
+        result.extend(_emit_chunk(c, token_limit))
+    return result
 
 
 def remove_contents_table(sections, eng=False):

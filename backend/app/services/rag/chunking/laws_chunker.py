@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 def chunk(
     sections: list[tuple[str, str]],
     lang: str = "Chinese",
-    depth: int = 2,
+    depth: int = 3,
+    chunk_token_num: int = 0,
 ) -> list[str]:
     """Chunk sections using laws-style hierarchical merging.
 
@@ -22,7 +23,8 @@ def chunk(
         sections: list of (text, layout_type) tuples.
                   For MinerU output, use mineru_adapter.mineru_to_sections() first.
         lang: "Chinese" or "English"
-        depth: hierarchy depth for splitting (default 2)
+        depth: hierarchy depth for splitting (default 3)
+        chunk_token_num: max tokens per chunk (0 = no limit)
 
     Returns:
         list of chunk strings, each containing full hierarchical title path.
@@ -52,7 +54,7 @@ def chunk(
     logger.info(f"Detected bullet pattern #{bull}, merging with depth={depth}")
 
     # Build hierarchical chunks
-    res = tree_merge(bull, sections, depth)
+    res = tree_merge(bull, sections, depth, token_limit=chunk_token_num)
 
     if not res:
         logger.warning("tree_merge produced no chunks, returning flat sections")

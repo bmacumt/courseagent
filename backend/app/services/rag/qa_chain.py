@@ -10,12 +10,12 @@ from app.services.rag.retriever import HybridRetriever
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """你是隧道工程课程智能助教。请根据提供的参考资料回答学生的问题。
+SYSTEM_PROMPT = """你是课程智能助教。
 
-要求：
-1. 回答必须基于参考资料，不要编造内容
-2. 如果参考资料不足以回答问题，请明确说明
-3. 在回答中标注引用来源，格式为 [序号]
+回答规则：
+1. 优先基于参考资料回答，在回答中标注引用来源，格式为 [序号]
+2. 如果参考资料不足以回答，但属于通用知识（数学公式、编程语法、常识等），可以直接回答
+3. 如果问题超出参考资料范围且属于专业领域知识，先告知学生"以下内容不在知识库中，请注意甄别"，再根据自身知识作答
 4. 回答要准确、专业、易于理解"""
 
 
@@ -73,7 +73,7 @@ class QAChain:
                 "num_reranked": 0,
             }
 
-        user_msg = f"参考资料：\n{context}\n\n问题：{question}\n\n请根据以上参考资料回答问题，标注引用来源 [序号]。"
+        user_msg = f"参考资料：\n{context}\n\n问题：{question}"
         answer = await self.llm.async_chat(SYSTEM_PROMPT, [{"role": "user", "content": user_msg}])
 
         return {
@@ -94,7 +94,7 @@ class QAChain:
 
         yield f"event: sources\ndata: {json.dumps(sources)}\n\n"
 
-        user_msg = f"参考资料：\n{context}\n\n问题：{question}\n\n请根据以上参考资料回答问题，标注引用来源 [序号]。"
+        user_msg = f"参考资料：\n{context}\n\n问题：{question}"
         async for token in self.llm.async_stream_chat(SYSTEM_PROMPT, [{"role": "user", "content": user_msg}]):
             yield f"event: token\ndata: {json.dumps({'content': token})}\n\n"
 

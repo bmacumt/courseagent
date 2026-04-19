@@ -10,6 +10,7 @@ interface ChatMessage {
   content: string;
   sources?: { index: number; text: string; source_name: string | null; chunk_index: number | null }[];
   timestamp: string;
+  researchLog?: string[];
 }
 
 export default function QA() {
@@ -19,6 +20,7 @@ export default function QA() {
   const [streaming, setStreaming] = useState(false);
   const [clearConfirm, setClearConfirm] = useState(false);
   const [expandedSources, setExpandedSources] = useState<Record<number, boolean>>({});
+  const [deepResearch, setDeepResearch] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -81,7 +83,17 @@ export default function QA() {
         setStreaming(false);
         abortRef.current = null;
       },
-    });
+      onResearchStatus: (status) => {
+        const logLine = formatResearchStatus(status);
+        if (logLine) {
+          setMessages(prev => prev.map(m =>
+            m.id === aiMsgId
+              ? { ...m, researchLog: [...(m.researchLog || []), logLine] }
+              : m
+          ));
+        }
+      },
+    }, deepResearch);
     abortRef.current = controller;
   };
 
@@ -110,6 +122,27 @@ export default function QA() {
 
   const isActive = loading || streaming;
 
+  function formatResearchStatus(status: studentApi.ResearchStatusEvent): string {
+    switch (status.phase) {
+      case 'start':
+        return `开始深度研究（最大深度: ${status.max_depth}）`;
+      case 'searching':
+        return `正在检索: "${(status.query || '').slice(0, 30)}" (深度 ${status.depth})`;
+      case 'retrieved':
+        return `找到 ${status.new_chunks} 个新片段（共 ${status.total_chunks} 个）`;
+      case 'checking':
+        return '检查信息充分性...';
+      case 'sufficiency':
+        return status.sufficient ? '信息充分，准备生成回答' : `信息不足: ${status.reasoning || ''}`;
+      case 'sub_queries':
+        return `生成子查询: ${(status.queries || []).join('; ')}`;
+      default:
+        return '';
+    }
+  }
+
+  const [expandedResearch, setExpandedResearch] = useState<Record<number, boolean>>({});
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px - 48px)', maxWidth: 860, margin: '0 auto' }}>
       {/* Header */}
@@ -118,6 +151,18 @@ export default function QA() {
           <h1 style={{ fontSize: 20, fontWeight: 600, color: '#2C3E50', marginBottom: 4 }}>
             知识问答
             <span style={{ background: '#EDFAF2', color: '#6B9E7A', fontSize: 10, padding: '2px 8px', borderRadius: 3, fontWeight: 500, marginLeft: 8, verticalAlign: 'middle' }}>流式响应</span>
+            <span
+              onClick={() => setDeepResearch(!deepResearch)}
+              style={{
+                background: deepResearch ? '#4A6FA5' : '#F0F0F0',
+                color: deepResearch ? '#FFFFFF' : '#999',
+                fontSize: 10, padding: '2px 8px', borderRadius: 3, fontWeight: 500,
+                marginLeft: 6, verticalAlign: 'middle', cursor: 'pointer',
+                userSelect: 'none', transition: 'all 0.2s',
+              }}
+            >
+              {deepResearch ? '深度研究 ON' : '深度研究'}
+            </span>
           </h1>
           <p style={{ fontSize: 13, color: '#7F8C8D' }}>基于课程知识库，随时向 AI 提问（对话记录仅保存于当前页面）</p>
         </div>
@@ -182,6 +227,26 @@ export default function QA() {
                 ) : null}
               </div>
 
+              {/* Research Log */}
+              {msg.researchLog && msg.researchLog.length > 0 && (
+                <div style={{ marginTop: 8, width: '100%' }}>
+                  <button
+                    onClick={() => setExpandedResearch(prev => ({ ...prev, [msg.id]: !prev[msg.id] }))}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', color: '#7A8F9E', fontSize: 12, padding: '4px 0' }}
+                  >
+                    🔍 研究过程 ({msg.researchLog.length} 步)
+                    {expandedResearch[msg.id] ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
+                  {expandedResearch[msg.id] && (
+                    <div style={{ background: '#F7F8FA', border: '1px solid #E8ECF0', borderRadius: 8, padding: '10px 14px', marginTop: 4, fontSize: 11, color: '#999', lineHeight: 1.6 }}>
+                      {msg.researchLog.map((line, i) => (
+                        <div key={i} style={{ marginBottom: 2 }}>{i + 1}. {line}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Sources */}
               {msg.sources && msg.sources.length > 0 && (
                 <div style={{ marginTop: 8, width: '100%' }}>
@@ -216,7 +281,9 @@ export default function QA() {
             </div>
             <div style={{ background: '#F7F8FA', borderRadius: '4px 12px 12px 12px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Loader2 size={15} color="#4A6FA5" className="animate-spin" />
-              <span style={{ fontSize: 13, color: '#7F8C8D' }}>AI 正在检索知识库...</span>
+              <span style={{ fontSize: 13, color: '#7F8C8D' }}>
+                {deepResearch ? 'AI 正在进行深度研究...' : 'AI 正在检索知识库...'}
+              </span>
             </div>
           </div>
         )}

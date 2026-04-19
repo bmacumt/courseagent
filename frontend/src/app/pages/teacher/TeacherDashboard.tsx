@@ -139,9 +139,13 @@ export default function TeacherDashboard() {
               const typeLabel: Record<string, { label: string; color: string }> = {
                 specification: { label: '规范', color: '#4A6FA5' },
                 textbook: { label: '教材', color: '#6B8F71' },
-                other: { label: '其他', color: '#7A8F9E' },
+                laws: { label: '规范', color: '#4A6FA5' },
+                book: { label: '教材', color: '#6B8F71' },
+                table: { label: '表格', color: '#D4A843' },
+                paper: { label: '论文', color: '#8B5CF6' },
+                ppt: { label: '课件', color: '#6B8F71' },
               };
-              const t = typeLabel[doc.doc_type];
+              const t = typeLabel[doc.doc_type] || { label: '其他', color: '#7A8F9E' };
               return (
                 <div key={doc.id} style={{ padding: '12px 0', borderBottom: i < documents.length - 1 ? '1px solid #F7F8FA' : 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>

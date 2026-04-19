@@ -74,9 +74,22 @@ export interface SSECallbacks {
   onToken: (token: string) => void;
   onDone: () => void;
   onError: (err: string) => void;
+  onResearchStatus?: (status: ResearchStatusEvent) => void;
 }
 
-export function streamQuestion(question: string, cb: SSECallbacks): AbortController {
+export interface ResearchStatusEvent {
+  phase: string;
+  query?: string;
+  depth?: number;
+  new_chunks?: number;
+  total_chunks?: number;
+  sufficient?: boolean;
+  reasoning?: string;
+  queries?: string[];
+  max_depth?: number;
+}
+
+export function streamQuestion(question: string, cb: SSECallbacks, deepResearch: boolean = false): AbortController {
   const controller = new AbortController();
   const token = localStorage.getItem('tunnel_auth_token');
 
@@ -86,7 +99,7 @@ export function streamQuestion(question: string, cb: SSECallbacks): AbortControl
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ question, deep_research: deepResearch }),
     signal: controller.signal,
   })
     .then(async (resp) => {
@@ -118,6 +131,7 @@ export function streamQuestion(question: string, cb: SSECallbacks): AbortControl
               if (currentEvent === 'sources') cb.onSources(JSON.parse(currentData));
               else if (currentEvent === 'token') cb.onToken(JSON.parse(currentData).content);
               else if (currentEvent === 'done') cb.onDone();
+              else if (currentEvent === 'research_status') cb.onResearchStatus?.(JSON.parse(currentData));
             } catch {}
             currentEvent = '';
             currentData = '';

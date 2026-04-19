@@ -15,7 +15,7 @@ export async function getDocuments(): Promise<DocumentResponse[]> {
   return res.data;
 }
 
-export async function uploadDocument(title: string, file: File, docType = 'specification'): Promise<DocumentResponse> {
+export async function uploadDocument(title: string, file: File, docType = 'book'): Promise<DocumentResponse> {
   const form = new FormData();
   form.append('title', title);
   form.append('doc_type', docType);
