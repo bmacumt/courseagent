@@ -8,32 +8,44 @@ interface MarkdownRendererProps {
   className?: string;
 }
 
-// Replace LaTeX delimiters before marked processes the text
-function renderLatex(text: string): string {
-  // Block math: $$...$$
+function renderLatex(text: string): { text: string; placeholders: string[] } {
+  const placeholders: string[] = [];
+
+  // Block math: $$...$$ → placeholder
   text = text.replace(/\$\$([\s\S]*?)\$\$/g, (_, tex) => {
     try {
-      return katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false });
+      const html = katex.renderToString(tex.trim(), { displayMode: true, throwOnError: false });
+      const idx = placeholders.length;
+      placeholders.push(html);
+      return `\x00MATH${idx}\x00`;
     } catch {
       return `$$${tex}$$`;
     }
   });
-  // Inline math: $...$
+
+  // Inline math: $...$ → placeholder
   text = text.replace(/\$([^\$\n]+?)\$/g, (_, tex) => {
     try {
-      return katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false });
+      const html = katex.renderToString(tex.trim(), { displayMode: false, throwOnError: false });
+      const idx = placeholders.length;
+      placeholders.push(html);
+      return `\x00MATH${idx}\x00`;
     } catch {
       return `$${tex}$`;
     }
   });
-  return text;
+
+  return { text, placeholders };
 }
 
 export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
   const html = useMemo(() => {
     try {
-      const withLatex = renderLatex(content);
-      return marked(withLatex, { breaks: true }) as string;
+      const { text: withPlaceholders, placeholders } = renderLatex(content);
+      let rendered = marked(withPlaceholders, { breaks: true }) as string;
+      // Restore placeholders back to KaTeX HTML
+      rendered = rendered.replace(/\x00MATH(\d+)\x00/g, (_, idx) => placeholders[parseInt(idx)]);
+      return rendered;
     } catch {
       return content;
     }
