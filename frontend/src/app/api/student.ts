@@ -6,6 +6,8 @@ import type {
   SubmitResult,
   ReportResponse,
   QAResponse,
+  ConversationSummary,
+  ConversationDetail,
 } from './types';
 
 // Assignments
@@ -64,8 +66,8 @@ export async function getStudentReport(reportId: number): Promise<ReportResponse
 }
 
 // QA
-export async function askQuestion(question: string): Promise<QAResponse> {
-  const res = await client.post<QAResponse>('/student/qa', { question });
+export async function askQuestion(question: string, conversationId?: number, history?: { role: string; content: string }[]): Promise<QAResponse> {
+  const res = await client.post<QAResponse>('/student/qa', { question, conversation_id: conversationId, history });
   return res.data;
 }
 
@@ -89,7 +91,13 @@ export interface ResearchStatusEvent {
   max_depth?: number;
 }
 
-export function streamQuestion(question: string, cb: SSECallbacks, deepResearch: boolean = false): AbortController {
+export function streamQuestion(
+  question: string,
+  cb: SSECallbacks,
+  deepResearch: boolean = false,
+  conversationId?: number,
+  history?: { role: string; content: string }[],
+): AbortController {
   const controller = new AbortController();
   const token = localStorage.getItem('tunnel_auth_token');
 
@@ -99,7 +107,12 @@ export function streamQuestion(question: string, cb: SSECallbacks, deepResearch:
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ question, deep_research: deepResearch }),
+    body: JSON.stringify({
+      question,
+      deep_research: deepResearch,
+      conversation_id: conversationId || null,
+      history: history || null,
+    }),
     signal: controller.signal,
   })
     .then(async (resp) => {
@@ -128,10 +141,15 @@ export function streamQuestion(question: string, cb: SSECallbacks, deepResearch:
             currentData = line.slice(6);
           } else if (line === '' && currentEvent && currentData) {
             try {
-              if (currentEvent === 'sources') cb.onSources(JSON.parse(currentData));
-              else if (currentEvent === 'token') cb.onToken(JSON.parse(currentData).content);
-              else if (currentEvent === 'done') cb.onDone();
-              else if (currentEvent === 'research_status') cb.onResearchStatus?.(JSON.parse(currentData));
+              const parsed = JSON.parse(currentData);
+              if (currentEvent === 'sources') cb.onSources(parsed);
+              else if (currentEvent === 'token') cb.onToken(parsed.content);
+              else if (currentEvent === 'done') {
+                if (parsed.sources) cb.onSources(parsed.sources);
+                if (parsed.answer) cb.onToken(parsed.answer);
+                cb.onDone();
+              }
+              else if (currentEvent === 'research_status') cb.onResearchStatus?.(parsed);
             } catch {}
             currentEvent = '';
             currentData = '';
@@ -145,4 +163,24 @@ export function streamQuestion(question: string, cb: SSECallbacks, deepResearch:
     });
 
   return controller;
+}
+
+// Conversations
+export async function getConversations(): Promise<ConversationSummary[]> {
+  const res = await client.get<ConversationSummary[]>('/student/conversations');
+  return res.data;
+}
+
+export async function createConversation(title: string): Promise<ConversationSummary> {
+  const res = await client.post<ConversationSummary>('/student/conversations', { title });
+  return res.data;
+}
+
+export async function getConversation(id: number): Promise<ConversationDetail> {
+  const res = await client.get<ConversationDetail>(`/student/conversations/${id}`);
+  return res.data;
+}
+
+export async function deleteConversation(id: number): Promise<void> {
+  await client.delete(`/student/conversations/${id}`);
 }

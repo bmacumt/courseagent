@@ -202,6 +202,28 @@ export interface QAResponse {
   sources: QASource[];
 }
 
+// Conversations
+export interface ConversationSummary {
+  id: number;
+  title: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ConversationMessage {
+  id: number;
+  role: string;
+  content: string;
+  created_at: string | null;
+}
+
+export interface ConversationDetail {
+  id: number;
+  title: string;
+  messages: ConversationMessage[];
+  created_at: string | null;
+}
+
 // Model Management
 export type ModelType = 'chat' | 'embedding' | 'rerank';
 

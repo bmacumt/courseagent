@@ -240,9 +240,15 @@ class ReportResponse(BaseModel):
 
 # --- Student: QA ---
 
+class ChatMessageInput(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
 class QARequest(BaseModel):
     question: str
     deep_research: bool = False
+    conversation_id: int | None = None
+    history: list[ChatMessageInput] | None = None
 
 class QASourceItem(BaseModel):
     index: int
@@ -276,3 +282,33 @@ class AddModelRequest(BaseModel):
 class SetDefaultRequest(BaseModel):
     model_type: str
     model_id: int
+
+
+# --- Student: Conversations ---
+
+class ConversationCreateRequest(BaseModel):
+    title: str
+
+class ConversationSummary(BaseModel):
+    id: int
+    title: str
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+class ConversationMessageItem(BaseModel):
+    id: int
+    role: str
+    content: str
+    created_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+class ConversationDetail(BaseModel):
+    id: int
+    title: str
+    messages: list[ConversationMessageItem]
+    created_at: datetime | None = None
+
+    model_config = {"from_attributes": True}

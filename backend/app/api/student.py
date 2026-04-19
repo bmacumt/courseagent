@@ -15,12 +15,13 @@ from app.auth.deps import require_role
 from app.config import SUBMISSION_DIR
 from app.db import engine as _db_engine
 from app.db.engine import get_session
-from app.db.models import User, Assignment, Submission, Report
+from app.db.models import User, Assignment, Submission, Report, Conversation, ConversationMessage
 from app.api.schemas import (
     AssignmentForStudent, AssignmentDetail,
     SubmitAnswer, SubmissionResponse, SubmissionSummary,
     ReportResponse, DimensionScoreItem,
     QARequest, QAResponse, QASourceItem,
+    ConversationCreateRequest, ConversationSummary, ConversationDetail, ConversationMessageItem,
 )
 from app.services.grading.service import GradingService  # noqa: lazy import in _run_grading_background
 from app.services.rag_service import RAGService
@@ -231,13 +232,22 @@ async def get_report(
 
 # --- Q&A ---
 
+def _history_to_dicts(history) -> list[dict]:
+    """Convert ChatMessageInput list to dict list for LLM."""
+    if not history:
+        return []
+    return [{"role": m.role, "content": m.content} for m in history[-10:]]
+
+
 @router.post("/qa", response_model=QAResponse)
 async def ask_question(
     req: QARequest,
     current_user: User = Depends(require_student),
+    session: AsyncSession = Depends(get_session),
 ):
+    history = _history_to_dicts(req.history)
     rag = RAGService()
-    result = await rag.query(req.question, deep_research=req.deep_research)
+    result = await rag.query(req.question, deep_research=req.deep_research, history=history)
     answer = result.get("answer", "")
     raw_sources = result.get("sources", [])
     source_items = []
@@ -250,6 +260,11 @@ async def ask_question(
                 source_name=meta.get("source"),
                 chunk_index=meta.get("chunk_index"),
             ))
+
+    # Save messages to conversation
+    if req.conversation_id:
+        await _save_messages(session, req.conversation_id, current_user.id, req.question, answer)
+
     return QAResponse(answer=answer, sources=source_items)
 
 
@@ -258,12 +273,54 @@ async def stream_question(
     req: QARequest,
     current_user: User = Depends(require_student),
 ):
+    history = _history_to_dicts(req.history)
     rag = RAGService()
+
+    async def generate():
+        full_answer = ""
+        async for event in rag.stream_query(req.question, deep_research=req.deep_research, history=history):
+            # Collect tokens for saving
+            if event.startswith("event: token"):
+                try:
+                    import re as _re
+                    data_match = _re.search(r'data: (.+)', event)
+                    if data_match:
+                        full_answer += json.loads(data_match.group(1)).get("content", "")
+                except Exception:
+                    pass
+            elif event.startswith("event: done"):
+                # Check if there's an answer in done (no-sources case)
+                try:
+                    data_match = __import__("re").search(r'data: (.+)', event)
+                    if data_match:
+                        data = json.loads(data_match.group(1))
+                        if data.get("answer") and not full_answer:
+                            full_answer = data["answer"]
+                except Exception:
+                    pass
+            yield event
+
+        # Save messages to conversation after streaming completes
+        if req.conversation_id and full_answer:
+            async with async_session() as db:
+                await _save_messages(db, req.conversation_id, current_user.id, req.question, full_answer)
+
     return StreamingResponse(
-        rag.stream_query(req.question, deep_research=req.deep_research),
+        generate(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+async def _save_messages(session: AsyncSession, conversation_id: int, user_id: int, question: str, answer: str):
+    """Save user question and AI response to conversation."""
+    conv = await session.get(Conversation, conversation_id)
+    if not conv or conv.user_id != user_id:
+        return
+    session.add(ConversationMessage(conversation_id=conversation_id, role="user", content=question))
+    session.add(ConversationMessage(conversation_id=conversation_id, role="assistant", content=answer))
+    conv.updated_at = datetime.now()
+    await session.commit()
 
 
 def _format_report(report: Report, assignment=None) -> ReportResponse:
@@ -283,3 +340,68 @@ def _format_report(report: Report, assignment=None) -> ReportResponse:
         created_at=report.created_at,
         assignment_title=assignment.title if assignment else None,
     )
+
+
+# --- Conversations ---
+
+@router.get("/conversations", response_model=list[ConversationSummary])
+async def list_conversations(
+    current_user: User = Depends(require_student),
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(
+        select(Conversation)
+        .where(Conversation.user_id == current_user.id)
+        .order_by(Conversation.updated_at.desc())
+    )
+    return result.scalars().all()
+
+
+@router.post("/conversations", response_model=ConversationSummary)
+async def create_conversation(
+    req: ConversationCreateRequest,
+    current_user: User = Depends(require_student),
+    session: AsyncSession = Depends(get_session),
+):
+    conv = Conversation(user_id=current_user.id, title=req.title[:100])
+    session.add(conv)
+    await session.commit()
+    await session.refresh(conv)
+    return conv
+
+
+@router.get("/conversations/{conversation_id}", response_model=ConversationDetail)
+async def get_conversation(
+    conversation_id: int,
+    current_user: User = Depends(require_student),
+    session: AsyncSession = Depends(get_session),
+):
+    conv = await session.get(Conversation, conversation_id)
+    if not conv or conv.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    result = await session.execute(
+        select(ConversationMessage)
+        .where(ConversationMessage.conversation_id == conversation_id)
+        .order_by(ConversationMessage.id)
+    )
+    messages = result.scalars().all()
+    return ConversationDetail(
+        id=conv.id, title=conv.title,
+        messages=[ConversationMessageItem.model_validate(m) for m in messages],
+        created_at=conv.created_at,
+    )
+
+
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(
+    conversation_id: int,
+    current_user: User = Depends(require_student),
+    session: AsyncSession = Depends(get_session),
+):
+    conv = await session.get(Conversation, conversation_id)
+    if not conv or conv.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    await session.delete(conv)
+    await session.commit()
+    return {"status": "deleted"}

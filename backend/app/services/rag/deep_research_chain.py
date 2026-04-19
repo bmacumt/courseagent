@@ -28,6 +28,22 @@ DEEP_RESEARCH_SYSTEM_PROMPT = """你是课程智能助教（深度研究模式�
 4. 回答要准确、专业、易于理解、条理清晰"""
 
 
+def _extract_cited_indices(answer: str) -> set[int]:
+    """Extract all [N] citation indices from the answer text."""
+    return {int(m) for m in re.findall(r'\[(\d+)\]', answer)}
+
+
+def _filter_sources_by_citation(sources: list[dict], answer: str) -> list[dict]:
+    """Return only sources that are actually cited in the answer."""
+    cited = _extract_cited_indices(answer)
+    if not cited:
+        return sources
+    filtered = [s for s in sources if s["index"] in cited]
+    for i, s in enumerate(filtered):
+        s["index"] = i + 1
+    return filtered
+
+
 def _parse_json_response(text: str) -> dict | None:
     """Parse JSON from LLM response, handling markdown code fences."""
     cleaned = re.sub(r"```json\s*|```\s*$", "", text.strip(), flags=re.MULTILINE)
@@ -203,8 +219,8 @@ class DeepResearchChain:
                 for event in r:
                     yield event
 
-    async def stream_answer(self, question: str) -> AsyncGenerator[str, None]:
-        """Yield SSE events: research_status* -> sources -> tokens -> done."""
+    async def stream_answer(self, question: str, history: list[dict] | None = None) -> AsyncGenerator[str, None]:
+        """Yield SSE events: research_status* -> tokens -> done (with sources)."""
         seen_ids: set[str] = set()
         all_sources: list[dict] = []
 
@@ -225,19 +241,23 @@ class DeepResearchChain:
         for i, s in enumerate(final_sources):
             s["index"] = i + 1
 
-        yield f"event: sources\ndata: {json.dumps(final_sources)}\n\n"
-
         context = self._build_context(final_sources)
         user_msg = f"参考资料：\n{context}\n\n问题：{question}"
+        messages = (history or []) + [{"role": "user", "content": user_msg}]
 
+        full_answer = ""
         async for token in self.llm.async_stream_chat(
-            DEEP_RESEARCH_SYSTEM_PROMPT, [{"role": "user", "content": user_msg}]
+            DEEP_RESEARCH_SYSTEM_PROMPT, messages
         ):
+            full_answer += token
             yield f'event: token\ndata: {json.dumps({"content": token})}\n\n'
 
-        yield "event: done\ndata: {}\n\n"
+        # Filter sources by actual citations in the answer
+        cited_sources = _filter_sources_by_citation(final_sources, full_answer)
 
-    async def answer(self, question: str) -> dict:
+        yield f"event: done\ndata: {json.dumps({'sources': cited_sources})}\n\n"
+
+    async def answer(self, question: str, history: list[dict] | None = None) -> dict:
         """Non-streaming deep research answer."""
         seen_ids: set[str] = set()
         all_sources: list[dict] = []
@@ -261,9 +281,10 @@ class DeepResearchChain:
 
         context = self._build_context(final_sources)
         user_msg = f"参考资料：\n{context}\n\n问题：{question}"
+        messages = (history or []) + [{"role": "user", "content": user_msg}]
 
         answer_text = await self.llm.async_chat(
-            DEEP_RESEARCH_SYSTEM_PROMPT, [{"role": "user", "content": user_msg}]
+            DEEP_RESEARCH_SYSTEM_PROMPT, messages
         )
 
         return {
