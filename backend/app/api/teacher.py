@@ -375,9 +375,11 @@ async def download_attachment(
     display_name = f"{student.student_id or student.username}_{student.real_name or student.username}_{filename}" if student else filename
     from urllib.parse import quote
     encoded = quote(display_name)
+    ascii_name = display_name.encode("ascii", errors="replace").decode()
     return FileResponse(
         submission.attachment_path,
-        headers={"Content-Disposition": f"attachment; filename=\"{display_name}\"; filename*=UTF-8''{encoded}"},
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{encoded}"},
     )
 
 
