@@ -186,11 +186,27 @@ class SubmissionSummary(BaseModel):
     assignment_title: str | None = None
     student_name: str | None = None
     student_real_name: str | None = None
+    student_id_field: str | None = None
+    class_name: str | None = None
     status: str
     submitted_at: datetime | None = None
     total_score: float | None = None
     has_attachment: bool = False
+    attachment_filename: str | None = None
     report_id: int | None = None
+
+class SubmissionDetail(BaseModel):
+    id: int
+    assignment_id: int
+    student_name: str | None = None
+    student_real_name: str | None = None
+    student_id_field: str | None = None
+    class_name: str | None = None
+    content: str
+    has_attachment: bool = False
+    attachment_filename: str | None = None
+    status: str
+    submitted_at: datetime | None = None
 
 
 # --- Reports ---
