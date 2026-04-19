@@ -303,6 +303,10 @@ class SetDefaultRequest(BaseModel):
 
 # --- Student: Conversations ---
 
+class SaveMessagesRequest(BaseModel):
+    question: str
+    answer: str
+
 class ConversationCreateRequest(BaseModel):
     title: str
 

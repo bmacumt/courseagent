@@ -184,3 +184,7 @@ export async function getConversation(id: number): Promise<ConversationDetail> {
 export async function deleteConversation(id: number): Promise<void> {
   await client.delete(`/student/conversations/${id}`);
 }
+
+export async function saveMessages(conversationId: number, question: string, answer: string): Promise<void> {
+  await client.post(`/student/conversations/${conversationId}/messages`, { question, answer });
+}

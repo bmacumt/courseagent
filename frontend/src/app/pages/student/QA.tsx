@@ -135,6 +135,7 @@ export default function QA() {
     // Build history from previous messages (last 10)
     const history = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
 
+    let fullAnswer = '';
     const controller = studentApi.streamQuestion(questionText, {
       onSources: (sources) => {
         const formatted = sources.map((s: any) => ({
@@ -146,6 +147,7 @@ export default function QA() {
         setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, sources: formatted } : m));
       },
       onToken: (token) => {
+        fullAnswer += token;
         setStreaming(true);
         setLoading(false);
         setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: m.content + token } : m));
@@ -155,6 +157,10 @@ export default function QA() {
         setStreaming(false);
         abortRef.current = null;
         fetchConversations();
+        // Save messages to DB after streaming completes
+        if (convId && questionText && fullAnswer) {
+          studentApi.saveMessages(convId, questionText, fullAnswer).catch(() => {});
+        }
       },
       onError: (err) => {
         setMessages(prev => prev.map(m =>

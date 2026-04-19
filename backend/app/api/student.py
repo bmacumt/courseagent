@@ -21,7 +21,7 @@ from app.api.schemas import (
     SubmitAnswer, SubmissionResponse, SubmissionSummary,
     ReportResponse, DimensionScoreItem,
     QARequest, QAResponse, QASourceItem,
-    ConversationCreateRequest, ConversationSummary, ConversationDetail, ConversationMessageItem,
+    SaveMessagesRequest, ConversationCreateRequest, ConversationSummary, ConversationDetail, ConversationMessageItem,
 )
 from app.services.grading.service import GradingService  # noqa: lazy import in _run_grading_background
 from app.services.rag_service import RAGService
@@ -277,33 +277,8 @@ async def stream_question(
     rag = RAGService()
 
     async def generate():
-        full_answer = ""
         async for event in rag.stream_query(req.question, deep_research=req.deep_research, history=history):
-            # Collect tokens for saving
-            if event.startswith("event: token"):
-                try:
-                    import re as _re
-                    data_match = _re.search(r'data: (.+)', event)
-                    if data_match:
-                        full_answer += json.loads(data_match.group(1)).get("content", "")
-                except Exception:
-                    pass
-            elif event.startswith("event: done"):
-                # Check if there's an answer in done (no-sources case)
-                try:
-                    data_match = __import__("re").search(r'data: (.+)', event)
-                    if data_match:
-                        data = json.loads(data_match.group(1))
-                        if data.get("answer") and not full_answer:
-                            full_answer = data["answer"]
-                except Exception:
-                    pass
             yield event
-
-        # Save messages to conversation after streaming completes
-        if req.conversation_id and full_answer:
-            async with async_session() as db:
-                await _save_messages(db, req.conversation_id, current_user.id, req.question, full_answer)
 
     return StreamingResponse(
         generate(),
@@ -368,6 +343,24 @@ async def create_conversation(
     await session.commit()
     await session.refresh(conv)
     return conv
+
+
+@router.post("/conversations/{conversation_id}/messages")
+async def save_conversation_messages(
+    conversation_id: int,
+    req: SaveMessagesRequest,
+    current_user: User = Depends(require_student),
+    session: AsyncSession = Depends(get_session),
+):
+    """Save user question and AI answer to a conversation (called by frontend after streaming)."""
+    conv = await session.get(Conversation, conversation_id)
+    if not conv or conv.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    session.add(ConversationMessage(conversation_id=conversation_id, role="user", content=req.question))
+    session.add(ConversationMessage(conversation_id=conversation_id, role="assistant", content=req.answer))
+    conv.updated_at = datetime.now()
+    await session.commit()
+    return {"status": "saved"}
 
 
 @router.get("/conversations/{conversation_id}", response_model=ConversationDetail)
