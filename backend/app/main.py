@@ -13,8 +13,10 @@ from app.api.student import router as student_router
 async def lifespan(app: FastAPI):
     await init_db()
     from app.services.settings_service import seed_defaults
+    from app.services.config_resolver import sync_model_defaults_to_env
     async with async_session() as session:
         await seed_defaults(session)
+        await sync_model_defaults_to_env(session)
     yield
 
 
@@ -32,6 +34,9 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(teacher_router)
 app.include_router(student_router)
+
+from app.api.models import router as models_router
+app.include_router(models_router)
 
 
 @app.get("/health")

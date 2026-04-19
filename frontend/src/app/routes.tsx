@@ -4,7 +4,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
-import SystemSettings from './pages/admin/SystemSettings';
+import ModelManagement from './pages/admin/ModelManagement';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
 import KnowledgeBase from './pages/teacher/KnowledgeBase';
 import Assignments from './pages/teacher/Assignments';
@@ -37,7 +37,7 @@ export const router = createBrowserRouter([
       // Admin routes
       { path: 'admin/dashboard', element: <AdminDashboard /> },
       { path: 'admin/users', element: <UserManagement /> },
-      { path: 'admin/settings', element: <SystemSettings /> },
+      { path: 'admin/models', element: <ModelManagement /> },
 
       // Teacher routes
       { path: 'teacher/dashboard', element: <TeacherDashboard /> },

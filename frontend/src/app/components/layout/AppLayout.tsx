@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { useAuth } from '../../context/AuthContext';
 import {
-  LayoutDashboard, Users, Settings, Database, ClipboardList,
+  LayoutDashboard, Users, Cpu, Database, ClipboardList,
   FileText, MessageSquare, LogOut, ChevronLeft, ChevronRight, Menu, X,
 } from 'lucide-react';
 
 const adminNav = [
   { path: '/admin/dashboard', label: '系统概览', icon: LayoutDashboard },
   { path: '/admin/users', label: '用户管理', icon: Users },
-  { path: '/admin/settings', label: '系统配置', icon: Settings },
+  { path: '/admin/models', label: '模型管理', icon: Cpu },
 ];
 
 const teacherNav = [

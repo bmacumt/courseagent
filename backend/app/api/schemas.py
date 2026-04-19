@@ -232,3 +232,26 @@ class QASourceItem(BaseModel):
 class QAResponse(BaseModel):
     answer: str
     sources: list[QASourceItem]
+
+
+# --- Model Management ---
+
+class AddProviderRequest(BaseModel):
+    provider_type: str
+    api_key: str
+    base_url: str | None = None
+
+class UpdateProviderRequest(BaseModel):
+    api_key: str | None = None
+    base_url: str | None = None
+    enabled: bool | None = None
+
+class AddModelRequest(BaseModel):
+    model_name: str
+    model_type: str
+    max_tokens: int = 4096
+    is_default: bool = False
+
+class SetDefaultRequest(BaseModel):
+    model_type: str
+    model_id: int

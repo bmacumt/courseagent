@@ -184,3 +184,43 @@ export interface QAResponse {
   answer: string;
   sources: QASource[];
 }
+
+// Model Management
+export type ModelType = 'chat' | 'embedding' | 'rerank';
+
+export interface ModelProviderResponse {
+  id: number;
+  name: string;
+  provider_type: string;
+  api_key: string;
+  api_key_full: string;
+  base_url: string;
+  enabled: boolean;
+  created_at: string | null;
+  models: ModelConfigResponse[];
+}
+
+export interface ModelConfigResponse {
+  id: number;
+  provider_id: number;
+  model_name: string;
+  model_type: ModelType;
+  enabled: boolean;
+  is_default: boolean;
+  max_tokens: number;
+  created_at: string | null;
+}
+
+export interface AvailableProvider {
+  provider_type: string;
+  name: string;
+  default_base_url: string;
+  supported_types: string[];
+  models: { name: string; type: string; max_tokens: number }[];
+}
+
+export interface VerifyResult {
+  valid: boolean;
+  error: string | null;
+  tested: string[];
+}
