@@ -33,6 +33,11 @@ export async function deleteDocument(id: number): Promise<void> {
   await client.delete(`/teacher/knowledge/${id}`);
 }
 
+export async function getDocumentChunks(id: number): Promise<{chunks: {index: number; text: string; source: string}[]}> {
+  const res = await client.get(`/teacher/knowledge/${id}/chunks`);
+  return res.data;
+}
+
 // Assignments
 export async function getAssignments(): Promise<AssignmentSummary[]> {
   const res = await client.get<AssignmentSummary[]>('/teacher/assignments');

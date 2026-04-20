@@ -103,5 +103,18 @@ class VectorStore:
             logger.error(f"Failed to delete doc_id={doc_id}: {e}")
             return 0
 
+    def get_chunks_by_doc(self, doc_id: str) -> list[dict]:
+        """Retrieve all chunks for a document, sorted by chunk_index."""
+        results = self.collection.get(where={"doc_id": doc_id})
+        chunks = []
+        for i in range(len(results["ids"])):
+            chunks.append({
+                "index": results["metadatas"][i].get("chunk_index", i),
+                "text": results["documents"][i],
+                "source": results["metadatas"][i].get("source", ""),
+            })
+        chunks.sort(key=lambda c: c["index"])
+        return chunks
+
     def count(self) -> int:
         return self.collection.count()

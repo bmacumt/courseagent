@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trash2, FileText, Loader2, CheckCircle, Plus, Database, Play, RefreshCw, Video } from 'lucide-react';
+import { Trash2, FileText, Loader2, CheckCircle, Plus, Database, Play, RefreshCw, Video, Eye } from 'lucide-react';
 import * as teacherApi from '../../api/teacher';
 import type { DocumentResponse } from '../../api/types';
 import { ConfirmDialog, Modal } from '../../components/shared/ConfirmDialog';
@@ -29,6 +29,9 @@ export default function KnowledgeBase() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [formError, setFormError] = useState('');
   const [parsingIds, setParsingIds] = useState<Set<number>>(new Set());
+  const [previewDoc, setPreviewDoc] = useState<DocumentResponse | null>(null);
+  const [previewChunks, setPreviewChunks] = useState<{index: number; text: string; source: string}[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const fetchDocs = () => {
     teacherApi.getDocuments()
@@ -99,6 +102,20 @@ export default function KnowledgeBase() {
       alert('删除失败');
     }
     setDeleteTarget(null);
+  };
+
+  const handlePreview = async (doc: DocumentResponse) => {
+    setPreviewDoc(doc);
+    setPreviewLoading(true);
+    try {
+      const data = await teacherApi.getDocumentChunks(doc.id);
+      setPreviewChunks(data.chunks);
+    } catch (err) {
+      console.error('Preview failed:', err);
+      alert('加载分块失败');
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const formatDate = (d: string | null) => {
@@ -219,17 +236,30 @@ export default function KnowledgeBase() {
                         </button>
                       )}
                       {isParsed && (
-                        <button
-                          onClick={() => handleParse(doc)}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
-                            border: '1px solid #E8ECF0', borderRadius: 5,
-                            background: '#F7F8FA', color: '#7A8F9E',
-                            cursor: 'pointer', fontSize: 12,
-                          }}
-                        >
-                          <RefreshCw size={13} /> 重新解析
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handlePreview(doc)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
+                              border: '1px solid #B8D4E8', borderRadius: 5,
+                              background: '#EBF3FF', color: '#4A6FA5',
+                              cursor: 'pointer', fontSize: 12,
+                            }}
+                          >
+                            <Eye size={13} /> 预览
+                          </button>
+                          <button
+                            onClick={() => handleParse(doc)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
+                              border: '1px solid #E8ECF0', borderRadius: 5,
+                              background: '#F7F8FA', color: '#7A8F9E',
+                              cursor: 'pointer', fontSize: 12,
+                            }}
+                          >
+                            <RefreshCw size={13} /> 重新解析
+                          </button>
+                        </>
                       )}
                       <button
                         onClick={() => setDeleteTarget(doc)}
@@ -321,6 +351,37 @@ export default function KnowledgeBase() {
         onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      {/* Preview Modal */}
+      <Modal
+        open={!!previewDoc}
+        title={`分块预览 — ${previewDoc?.title || ''}`}
+        onClose={() => { setPreviewDoc(null); setPreviewChunks([]); }}
+        width={700}
+        footer={null}
+      >
+        {previewLoading ? (
+          <div style={{ textAlign: 'center', padding: 32, color: '#7F8C8D' }}>
+            <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 12px', display: 'block' }} />
+            加载中...
+          </div>
+        ) : previewChunks.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 32, color: '#A4B0BE' }}>暂无分块数据</div>
+        ) : (
+          <div style={{ maxHeight: 500, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 12, color: '#7F8C8D', marginBottom: 4 }}>共 {previewChunks.length} 个分块</div>
+            {previewChunks.map((c: {index: number; text: string; source: string}) => (
+              <div key={c.index} style={{ background: '#F7F8FA', borderRadius: 8, padding: '12px 16px', border: '1px solid #F0F2F5' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ background: '#EBF3FF', color: '#4A6FA5', borderRadius: 4, padding: '1px 8px', fontSize: 11, fontWeight: 500 }}>#{c.index + 1}</span>
+                  {c.source && <span style={{ fontSize: 11, color: '#A4B0BE' }}>{c.source}</span>}
+                </div>
+                <div style={{ fontSize: 13, color: '#2C3E50', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{c.text}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

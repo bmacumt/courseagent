@@ -153,6 +153,21 @@ async def parse_document(
     return {"status": "parsing", "doc_id": doc_id}
 
 
+@router.get("/knowledge/{doc_id}/chunks")
+async def get_document_chunks(
+    doc_id: int,
+    current_user: User = Depends(require_teacher),
+    session: AsyncSession = Depends(get_session),
+):
+    doc = await session.get(Document, doc_id)
+    if not doc or doc.owner_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    rag = RAGService()
+    chunks = rag.manager.vector_store.get_chunks_by_doc(doc.doc_uuid)
+    return {"chunks": chunks}
+
+
 @router.get("/knowledge", response_model=list[DocumentResponse])
 async def list_documents(
     current_user: User = Depends(require_teacher),
