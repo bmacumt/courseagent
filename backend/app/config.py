@@ -25,3 +25,8 @@ SMTP_PORT: int = int(os.getenv("SMTP_PORT", "465"))
 SMTP_USER: str = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "课程智能助教")
+
+# ASR (Speech-to-Text)
+ASR_API_KEY: str = os.getenv("ASR_API_KEY", "")
+ASR_BASE_URL: str = os.getenv("ASR_BASE_URL", "https://api.siliconflow.cn/v1")
+ASR_MODEL: str = os.getenv("ASR_MODEL", "TeleAI/TeleSpeechASR")

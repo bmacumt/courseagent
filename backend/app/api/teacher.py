@@ -52,6 +52,9 @@ def _build_criteria_json(req_criteria) -> str:
 
 # --- Knowledge Base ---
 
+VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
+
+
 @router.post("/knowledge", response_model=DocumentResponse)
 async def upload_document(
     title: str = Form(...),
@@ -60,8 +63,14 @@ async def upload_document(
     current_user: User = Depends(require_teacher),
     session: AsyncSession = Depends(get_session),
 ):
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+    ext = os.path.splitext(file.filename.lower())[1]
+    if ext == ".pdf":
+        pass
+    elif ext in VIDEO_EXTENSIONS:
+        if doc_type != "mooc":
+            raise HTTPException(status_code=400, detail="视频文件请选择「慕课视频」类型")
+    else:
+        raise HTTPException(status_code=400, detail=f"不支持的文件格式: {ext}，支持 PDF 和视频文件 (mp4/avi/mov/mkv/webm)")
 
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     file_id = uuid.uuid4().hex[:12]
@@ -86,7 +95,7 @@ async def upload_document(
 
 
 async def _run_parse_background(doc_id: int):
-    """Background task: parse a document (MinerU + chunk + embed)."""
+    """Background task: parse a document (PDF → MinerU, Video → ASR, then chunk + embed)."""
     from app.db.engine import async_session
     async with async_session() as session:
         doc = await session.get(Document, doc_id)
@@ -98,7 +107,11 @@ async def _run_parse_background(doc_id: int):
 
         try:
             rag = RAGService()
-            result = rag.manager.ingest_pdf(doc.file_path, doc_id=doc.doc_uuid, doc_type=doc.doc_type)
+            ext = os.path.splitext(doc.file_path)[1].lower()
+            if ext in VIDEO_EXTENSIONS:
+                result = rag.manager.ingest_video(doc.file_path, doc_id=doc.doc_uuid, doc_type=doc.doc_type)
+            else:
+                result = rag.manager.ingest_pdf(doc.file_path, doc_id=doc.doc_uuid, doc_type=doc.doc_type)
             if result.get("status") == "ok":
                 doc.chunk_count = result["num_chunks"]
                 doc.parse_status = "parsed"

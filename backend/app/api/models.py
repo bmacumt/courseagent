@@ -1,5 +1,6 @@
 """Model management API: providers, model configs, defaults, verification."""
 import logging
+import os
 
 from fastapi import APIRouter, Depends, HTTPException
 from openai import AsyncOpenAI, OpenAI
@@ -182,6 +183,24 @@ async def verify_provider(
             tested.append("rerank")
         except Exception as e:
             errors.append(f"rerank: {e}")
+
+    if "asr" in supported:
+        try:
+            from app.services.asr_client import ASRClient
+            model_name = next((m["name"] for m in (info.get("models", [])) if m["type"] == "asr"), "TeleAI/TeleSpeechASR")
+            asr = ASRClient(api_key=provider.api_key, base_url=provider.base_url, model=model_name)
+            import tempfile, struct, wave
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
+                with wave.open(tf.name, "w") as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)
+                    wf.setframerate(16000)
+                    wf.writeframes(struct.pack("<h", 0) * 16000)
+                asr.transcribe(tf.name)
+                os.unlink(tf.name)
+            tested.append("asr")
+        except Exception as e:
+            errors.append(f"asr: {e}")
 
     if not supported:
         return {"valid": False, "error": "No supported model types to verify", "tested": []}

@@ -7,6 +7,7 @@ const TYPE_OPTIONS = [
   { value: 'chat', label: '聊天' },
   { value: 'embedding', label: '嵌入' },
   { value: 'rerank', label: '重排序' },
+  { value: 'asr', label: '语音识别' },
 ];
 
 interface Props {

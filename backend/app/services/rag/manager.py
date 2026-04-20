@@ -40,6 +40,40 @@ class PipelineManager:
         )
         self.mineru = MinerUClient()
 
+    def ingest_video(self, video_path: str, doc_id: str | None = None, doc_type: str = "mooc") -> dict:
+        """Full ingest pipeline: Video → extract audio → ASR → chunk → embed → store."""
+        doc_id = doc_id or uuid.uuid4().hex[:12]
+        try:
+            logger.info(f"[ingest_video] Transcribing {video_path}")
+            from app.services.asr_client import ASRClient
+            asr = ASRClient()
+            transcript = asr.transcribe_video(video_path)
+
+            if not transcript.strip():
+                return {"doc_id": doc_id, "num_chunks": 0, "status": "error", "error": "Empty transcript"}
+
+            sections = [(transcript, "")]
+            logger.info(f"[ingest_video] Transcript: {len(transcript)} chars")
+
+            chunks_result = dispatch_chunk(sections, doc_type=doc_type, lang="zh")
+            chunk_texts = [c for c in chunks_result if c.strip()]
+            logger.info(f"[ingest_video] {len(chunk_texts)} chunks")
+
+            if not chunk_texts:
+                return {"doc_id": doc_id, "num_chunks": 0, "status": "error", "error": "No chunks produced"}
+
+            embeddings = self.embedder.embed_texts(chunk_texts)
+            metadata = [{"doc_id": doc_id, "chunk_index": i, "source": os.path.basename(video_path)} for i in range(len(chunk_texts))]
+            self.vector_store.add_chunks(doc_id, chunk_texts, embeddings, metadata)
+            self.retriever.rebuild_bm25()
+
+            logger.info(f"[ingest_video] Done: {doc_id}, {len(chunk_texts)} chunks")
+            return {"doc_id": doc_id, "num_chunks": len(chunk_texts), "status": "ok"}
+
+        except Exception as e:
+            logger.error(f"[ingest_video] Failed: {e}")
+            return {"doc_id": doc_id, "num_chunks": 0, "status": "error", "error": str(e)}
+
     def ingest_pdf(self, pdf_path: str, doc_id: str | None = None, doc_type: str = "book") -> dict:
         """Full ingest pipeline: PDF → parse → chunk → embed → store.
 

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { ModelConfigResponse, ModelProviderResponse, ModelType } from '../../../api/types';
 import * as modelsApi from '../../../api/models';
 
-const TYPE_LABELS: Record<string, string> = { chat: '聊天', embedding: '嵌入', rerank: '重排序' };
+const TYPE_LABELS: Record<string, string> = { chat: '聊天', embedding: '嵌入', rerank: '重排序', asr: '语音识别' };
 
 interface Props {
   providers: ModelProviderResponse[];
@@ -37,6 +37,7 @@ export default function SystemDefaults({ providers, onUpdated }: Props) {
     { type: 'chat', label: '聊天模型' },
     { type: 'embedding', label: '嵌入模型' },
     { type: 'rerank', label: '重排序模型' },
+    { type: 'asr', label: '语音识别模型' },
   ];
 
   return (
@@ -45,7 +46,7 @@ export default function SystemDefaults({ providers, onUpdated }: Props) {
         <div style={{ width: 4, height: 18, background: '#4A6FA5', borderRadius: 2 }} />
         系统默认模型
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16 }}>
         {types.map(({ type, label }) => {
           const current = getDefault(type);
           const options = enabledModels.filter(m => m.model_type === type);

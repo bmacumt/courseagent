@@ -23,6 +23,11 @@ MODEL_TYPE_ENV_MAP = {
         "base_url": "RERANKER_BASE_URL",
         "model": "RERANKER_MODEL",
     },
+    "asr": {
+        "api_key": "ASR_API_KEY",
+        "base_url": "ASR_BASE_URL",
+        "model": "ASR_MODEL",
+    },
 }
 
 MODEL_TYPE_ENV_DEFAULTS = {
@@ -37,6 +42,10 @@ MODEL_TYPE_ENV_DEFAULTS = {
     "rerank": {
         "base_url": "https://api.siliconflow.cn/v1",
         "model": "BAAI/bge-reranker-v2-m3",
+    },
+    "asr": {
+        "base_url": "https://api.siliconflow.cn/v1",
+        "model": "TeleAI/TeleSpeechASR",
     },
 }
 
@@ -68,7 +77,7 @@ async def get_default_config(model_type: str, session: AsyncSession) -> dict | N
 async def get_all_defaults(session: AsyncSession) -> dict:
     """Get default configs for all model types."""
     result = {}
-    for mt in ("chat", "embedding", "rerank"):
+    for mt in ("chat", "embedding", "rerank", "asr"):
         cfg = await get_default_config(mt, session)
         result[mt] = cfg
     return result

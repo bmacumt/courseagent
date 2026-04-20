@@ -226,7 +226,7 @@ export interface ConversationDetail {
 }
 
 // Model Management
-export type ModelType = 'chat' | 'embedding' | 'rerank';
+export type ModelType = 'chat' | 'embedding' | 'rerank' | 'asr';
 
 export interface ModelProviderResponse {
   id: number;

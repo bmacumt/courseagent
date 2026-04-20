@@ -6,7 +6,7 @@ def dispatch_chunk(sections, doc_type="book", lang="zh", **kwargs):
 
     Args:
         sections: list of (text, layout_type) tuples
-        doc_type: "laws" | "book" | "table" | "paper" | "ppt"
+        doc_type: "laws" | "book" | "table" | "paper" | "ppt" | "mooc"
         lang: "zh" or "en"
         **kwargs: passed to the chunker (depth, chunk_token_num, etc.)
     """

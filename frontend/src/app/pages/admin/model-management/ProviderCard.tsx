@@ -7,6 +7,7 @@ const TYPE_LABELS: Record<string, { label: string; color: string; bg: string }> 
   chat: { label: '聊天', color: '#4A6FA5', bg: '#EBF3FF' },
   embedding: { label: '嵌入', color: '#6B9E7A', bg: '#EDFAF2' },
   rerank: { label: '重排序', color: '#D4A843', bg: '#FFF8E6' },
+  asr: { label: '语音识别', color: '#E85D75', bg: '#FFF0F3' },
 };
 
 interface Props {

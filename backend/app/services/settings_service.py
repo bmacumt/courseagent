@@ -32,6 +32,9 @@ SETTING_TO_ENV = {
     "access_token_expire_minutes": "ACCESS_TOKEN_EXPIRE_MINUTES",
     "max_file_size_mb": "MAX_FILE_SIZE_MB",
     "rag_retrieval_top_k": "RAG_RETRIEVAL_TOP_K",
+    "asr_api_key": "ASR_API_KEY",
+    "asr_base_url": "ASR_BASE_URL",
+    "asr_model": "ASR_MODEL",
 }
 
 # Default values: (category, key, env_var_or_default)
@@ -57,6 +60,9 @@ DEFAULTS = [
     ("general", "access_token_expire_minutes", "ACCESS_TOKEN_EXPIRE_MINUTES"),
     ("general", "max_file_size_mb", "50"),
     ("general", "rag_retrieval_top_k", "20"),
+    ("asr", "asr_api_key", "ASR_API_KEY"),
+    ("asr", "asr_base_url", "ASR_BASE_URL"),
+    ("asr", "asr_model", "ASR_MODEL"),
 ]
 
 

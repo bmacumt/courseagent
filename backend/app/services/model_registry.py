@@ -18,7 +18,7 @@ PROVIDERS: dict[str, dict] = {
     "siliconflow": {
         "name": "SiliconFlow",
         "default_base_url": "https://api.siliconflow.cn/v1",
-        "supported_types": ["chat", "embedding", "rerank"],
+        "supported_types": ["chat", "embedding", "rerank", "asr"],
         "models": [
             {"name": "deepseek-ai/DeepSeek-V3", "type": "chat", "max_tokens": 8192},
             {"name": "Qwen/Qwen3-8B", "type": "chat", "max_tokens": 8192},
@@ -26,6 +26,8 @@ PROVIDERS: dict[str, dict] = {
             {"name": "BAAI/bge-large-zh-v1.5", "type": "embedding", "max_tokens": 512},
             {"name": "BAAI/bge-large-en-v1.5", "type": "embedding", "max_tokens": 512},
             {"name": "BAAI/bge-reranker-v2-m3", "type": "rerank", "max_tokens": 512},
+            {"name": "TeleAI/TeleSpeechASR", "type": "asr", "max_tokens": 4096},
+            {"name": "FunAudioLLM/SenseVoiceSmall", "type": "asr", "max_tokens": 4096},
         ],
     },
     "openai": {
