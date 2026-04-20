@@ -3,7 +3,6 @@
 Supports: BAAI/bge-large-zh-v1.5 and similar models.
 """
 import logging
-import os
 
 import tiktoken
 from openai import OpenAI
@@ -16,15 +15,15 @@ BGE_INSTRUCTION = "Represent this sentence for searching relevant passages: "
 class Embedder:
     def __init__(
         self,
-        api_key: str | None = None,
-        base_url: str | None = None,
-        model: str | None = None,
-        max_tokens: int | None = None,
+        api_key: str = "",
+        base_url: str = "",
+        model: str = "",
+        max_tokens: int = 8192,
     ):
-        self.api_key = api_key or os.getenv("EMBEDDING_API_KEY", "")
-        self.base_url = base_url or os.getenv("EMBEDDING_BASE_URL", "https://api.siliconflow.cn/v1")
-        self.model = model or os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
-        self.max_tokens = max_tokens or int(os.getenv("EMBEDDING_MAX_TOKENS", "8192"))
+        self.api_key = api_key
+        self.base_url = base_url
+        self.model = model
+        self.max_tokens = max_tokens
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
 
     def embed_texts(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:

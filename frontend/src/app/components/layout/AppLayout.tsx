@@ -13,6 +13,8 @@ import { Modal } from '../../components/shared/ConfirmDialog';
 const adminNav = [
   { path: '/admin/dashboard', label: '系统概览', icon: LayoutDashboard },
   { path: '/admin/users', label: '用户管理', icon: Users },
+  { path: '/admin/knowledge', label: '知识库', icon: Database },
+  { path: '/admin/assignments', label: '作业管理', icon: ClipboardList },
   { path: '/admin/models', label: '模型管理', icon: Cpu },
 ];
 

@@ -6,6 +6,11 @@ import type {
   BatchImportResult,
   SystemStats,
   SettingItem,
+  AdminDocumentItem,
+  AssignmentSummary,
+  SubmissionSummary,
+  SubmissionDetail,
+  ReportResponse,
 } from './types';
 
 export async function getUsers(params?: { role?: string; class_name?: string }): Promise<UserResponse[]> {
@@ -44,5 +49,36 @@ export async function getSettings(): Promise<Record<string, SettingItem[]>> {
 
 export async function updateSetting(key: string, value: string): Promise<SettingItem> {
   const res = await client.put<SettingItem>(`/admin/settings/${key}`, { value });
+  return res.data;
+}
+
+// Data browsing
+export async function getAdminDocuments(): Promise<AdminDocumentItem[]> {
+  const res = await client.get<AdminDocumentItem[]>('/admin/knowledge');
+  return res.data;
+}
+
+export async function getAdminChunks(docId: number): Promise<{chunks: {index: number; text: string; source: string}[]}> {
+  const res = await client.get(`/admin/knowledge/${docId}/chunks`);
+  return res.data;
+}
+
+export async function getAdminAssignments(): Promise<AssignmentSummary[]> {
+  const res = await client.get<AssignmentSummary[]>('/admin/assignments');
+  return res.data;
+}
+
+export async function getAdminSubmissions(assignmentId: number): Promise<SubmissionSummary[]> {
+  const res = await client.get<SubmissionSummary[]>(`/admin/assignments/${assignmentId}/submissions`);
+  return res.data;
+}
+
+export async function getAdminSubmissionDetail(submissionId: number): Promise<SubmissionDetail> {
+  const res = await client.get<SubmissionDetail>(`/admin/submissions/${submissionId}`);
+  return res.data;
+}
+
+export async function getAdminReport(reportId: number): Promise<ReportResponse> {
+  const res = await client.get<ReportResponse>(`/admin/reports/${reportId}`);
   return res.data;
 }

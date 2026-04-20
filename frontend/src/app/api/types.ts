@@ -71,6 +71,10 @@ export interface DocumentResponse {
   uploaded_at: string | null;
 }
 
+export interface AdminDocumentItem extends DocumentResponse {
+  owner_name: string | null;
+}
+
 // Teacher: Assignments
 export interface AssignmentSummary {
   id: number;

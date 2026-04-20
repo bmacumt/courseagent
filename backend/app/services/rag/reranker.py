@@ -3,7 +3,6 @@
 Supports: BAAI/bge-reranker-v2-m3 and similar models.
 """
 import logging
-import os
 
 import requests
 
@@ -13,13 +12,13 @@ logger = logging.getLogger(__name__)
 class Reranker:
     def __init__(
         self,
-        api_key: str | None = None,
-        base_url: str | None = None,
-        model: str | None = None,
+        api_key: str = "",
+        base_url: str = "",
+        model: str = "",
     ):
-        self.api_key = api_key or os.getenv("RERANKER_API_KEY", "")
-        self.base_url = (base_url or os.getenv("RERANKER_BASE_URL", "https://api.siliconflow.cn/v1")).rstrip("/")
-        self.model = model or os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
+        self.api_key = api_key
+        self.base_url = base_url.rstrip("/")
+        self.model = model
 
     def rerank(
         self,

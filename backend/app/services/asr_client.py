@@ -15,13 +15,13 @@ SEGMENT_MINUTES = 10
 class ASRClient:
     def __init__(
         self,
-        api_key: str | None = None,
-        base_url: str | None = None,
-        model: str | None = None,
+        api_key: str = "",
+        base_url: str = "",
+        model: str = "",
     ):
-        self.api_key = api_key or os.getenv("ASR_API_KEY", "")
-        self.base_url = base_url or os.getenv("ASR_BASE_URL", "https://api.siliconflow.cn/v1")
-        self.model = model or os.getenv("ASR_MODEL", "TeleAI/TeleSpeechASR")
+        self.api_key = api_key
+        self.base_url = base_url
+        self.model = model
 
     def extract_audio(self, video_path: str, output_path: str | None = None) -> str:
         """Extract audio from video to 16kHz mono WAV."""

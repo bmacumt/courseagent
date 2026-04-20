@@ -5,6 +5,9 @@ import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagement from './pages/admin/UserManagement';
 import ModelManagement from './pages/admin/ModelManagement';
+import AdminKnowledge from './pages/admin/AdminKnowledge';
+import AdminAssignments from './pages/admin/AdminAssignments';
+import AdminSubmissions from './pages/admin/AdminSubmissions';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
 import KnowledgeBase from './pages/teacher/KnowledgeBase';
 import Assignments from './pages/teacher/Assignments';
@@ -38,6 +41,9 @@ export const router = createBrowserRouter([
       { path: 'admin/dashboard', element: <AdminDashboard /> },
       { path: 'admin/users', element: <UserManagement /> },
       { path: 'admin/models', element: <ModelManagement /> },
+      { path: 'admin/knowledge', element: <AdminKnowledge /> },
+      { path: 'admin/assignments', element: <AdminAssignments /> },
+      { path: 'admin/submissions/:id', element: <AdminSubmissions /> },
 
       // Teacher routes
       { path: 'teacher/dashboard', element: <TeacherDashboard /> },

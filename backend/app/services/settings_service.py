@@ -1,4 +1,4 @@
-"""Settings service: seed defaults from .env, sync DB changes to os.environ."""
+"""Settings service: seed defaults, sync DB changes to os.environ."""
 import logging
 import os
 
@@ -9,22 +9,8 @@ from app.db.models import Setting
 
 logger = logging.getLogger(__name__)
 
-# Mapping: DB setting key → os.environ key
+# Mapping: DB setting key → os.environ key (non-model settings only)
 SETTING_TO_ENV = {
-    "llm_api_key": "LLM_API_KEY",
-    "llm_base_url": "LLM_BASE_URL",
-    "llm_model": "LLM_MODEL",
-    "llm_temperature": "LLM_TEMPERATURE",
-    "llm_max_tokens": "LLM_MAX_TOKENS",
-    "embedding_api_key": "EMBEDDING_API_KEY",
-    "embedding_base_url": "EMBEDDING_BASE_URL",
-    "embedding_model": "EMBEDDING_MODEL",
-    "embedding_dimension": "EMBEDDING_DIMENSION",
-    "embedding_batch_size": "EMBEDDING_BATCH_SIZE",
-    "reranker_api_key": "RERANKER_API_KEY",
-    "reranker_base_url": "RERANKER_BASE_URL",
-    "reranker_model": "RERANKER_MODEL",
-    "reranker_top_k": "RERANKER_TOP_K",
     "mineru_api_token": "MINERU_API_TOKEN",
     "mineru_base_url": "MINERU_BASE_URL",
     "mineru_chunk_size": "MINERU_CHUNK_SIZE",
@@ -32,27 +18,10 @@ SETTING_TO_ENV = {
     "access_token_expire_minutes": "ACCESS_TOKEN_EXPIRE_MINUTES",
     "max_file_size_mb": "MAX_FILE_SIZE_MB",
     "rag_retrieval_top_k": "RAG_RETRIEVAL_TOP_K",
-    "asr_api_key": "ASR_API_KEY",
-    "asr_base_url": "ASR_BASE_URL",
-    "asr_model": "ASR_MODEL",
 }
 
 # Default values: (category, key, env_var_or_default)
 DEFAULTS = [
-    ("llm", "llm_api_key", "LLM_API_KEY"),
-    ("llm", "llm_base_url", "LLM_BASE_URL"),
-    ("llm", "llm_model", "LLM_MODEL"),
-    ("llm", "llm_temperature", "0.1"),
-    ("llm", "llm_max_tokens", "2048"),
-    ("embedding", "embedding_api_key", "EMBEDDING_API_KEY"),
-    ("embedding", "embedding_base_url", "EMBEDDING_BASE_URL"),
-    ("embedding", "embedding_model", "EMBEDDING_MODEL"),
-    ("embedding", "embedding_dimension", "1024"),
-    ("embedding", "embedding_batch_size", "32"),
-    ("reranker", "reranker_api_key", "RERANKER_API_KEY"),
-    ("reranker", "reranker_base_url", "RERANKER_BASE_URL"),
-    ("reranker", "reranker_model", "RERANKER_MODEL"),
-    ("reranker", "reranker_top_k", "5"),
     ("mineru", "mineru_api_token", "MINERU_API_TOKEN"),
     ("mineru", "mineru_base_url", "MINERU_BASE_URL"),
     ("mineru", "mineru_chunk_size", "512"),
@@ -60,9 +29,6 @@ DEFAULTS = [
     ("general", "access_token_expire_minutes", "ACCESS_TOKEN_EXPIRE_MINUTES"),
     ("general", "max_file_size_mb", "50"),
     ("general", "rag_retrieval_top_k", "20"),
-    ("asr", "asr_api_key", "ASR_API_KEY"),
-    ("asr", "asr_base_url", "ASR_BASE_URL"),
-    ("asr", "asr_model", "ASR_MODEL"),
 ]
 
 
@@ -74,7 +40,6 @@ async def seed_defaults(session: AsyncSession) -> None:
     added = 0
     for category, key, value_or_env in DEFAULTS:
         if key not in existing:
-            # If value_or_env is an env var name, read from env; otherwise use as literal
             value = os.getenv(value_or_env, value_or_env)
             setting = Setting(key=key, value=value, category=category)
             session.add(setting)
