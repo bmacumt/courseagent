@@ -3,6 +3,7 @@
 Supports: BAAI/bge-large-zh-v1.5 and similar models.
 """
 import logging
+import os
 
 import tiktoken
 from openai import OpenAI
@@ -18,12 +19,12 @@ class Embedder:
         api_key: str = "",
         base_url: str = "",
         model: str = "",
-        max_tokens: int = 8192,
+        max_tokens: int = 0,
     ):
-        self.api_key = api_key
-        self.base_url = base_url
-        self.model = model
-        self.max_tokens = max_tokens
+        self.api_key = api_key or os.getenv("EMBEDDING_API_KEY", "")
+        self.base_url = base_url or os.getenv("EMBEDDING_BASE_URL", "")
+        self.model = model or os.getenv("EMBEDDING_MODEL", "")
+        self.max_tokens = max_tokens or int(os.getenv("EMBEDDING_MAX_TOKENS", "8192"))
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
 
     def embed_texts(self, texts: list[str], batch_size: int = 32) -> list[list[float]]:

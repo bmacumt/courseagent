@@ -3,6 +3,7 @@
 Supports: BAAI/bge-reranker-v2-m3 and similar models.
 """
 import logging
+import os
 
 import requests
 
@@ -16,9 +17,9 @@ class Reranker:
         base_url: str = "",
         model: str = "",
     ):
-        self.api_key = api_key
-        self.base_url = base_url.rstrip("/")
-        self.model = model
+        self.api_key = api_key or os.getenv("RERANKER_API_KEY", "")
+        self.base_url = (base_url or os.getenv("RERANKER_BASE_URL", "")).rstrip("/")
+        self.model = model or os.getenv("RERANKER_MODEL", "")
 
     def rerank(
         self,

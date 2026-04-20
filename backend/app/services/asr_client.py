@@ -19,9 +19,9 @@ class ASRClient:
         base_url: str = "",
         model: str = "",
     ):
-        self.api_key = api_key
-        self.base_url = base_url
-        self.model = model
+        self.api_key = api_key or os.getenv("ASR_API_KEY", "")
+        self.base_url = base_url or os.getenv("ASR_BASE_URL", "")
+        self.model = model or os.getenv("ASR_MODEL", "")
 
     def extract_audio(self, video_path: str, output_path: str | None = None) -> str:
         """Extract audio from video to 16kHz mono WAV."""

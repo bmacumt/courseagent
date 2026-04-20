@@ -16,9 +16,13 @@ type AssignmentItem = AssignmentSummary & {
 interface Dimension { name: string; label: string; weight: number; description: string; }
 
 const defaultDimensions: Dimension[] = [
-  { name: 'accuracy', label: '准确性', weight: 0.4, description: '内容是否正确，技术要点是否准确。引用知识库知识点可加分' },
-  { name: 'completeness', label: '完整性', weight: 0.35, description: '是否覆盖题目的主要要点' },
-  { name: 'innovation', label: '创新性', weight: 0.25, description: '是否有独立思考和创新分析' },
+  { name: 'objective', label: '实验目的', weight: 0.15, description: '实验目的表述是否明确、具体，是否与研究问题紧密关联' },
+  { name: 'hypothesis', label: '假设合理性', weight: 0.15, description: '提出的假设是否有科学依据，逻辑是否自洽，是否可检验' },
+  { name: 'variables', label: '变量控制', weight: 0.20, description: '自变量、因变量的识别和控制是否合理，是否考虑了干扰变量' },
+  { name: 'methodology', label: '方法可行性', weight: 0.20, description: '实验方法是否科学可行，步骤是否完整，工具和材料选择是否恰当' },
+  { name: 'safety', label: '安全风险', weight: 0.15, description: '是否识别并评估了实验中的安全风险，防护措施是否到位' },
+  { name: 'data_plan', label: '数据方案', weight: 0.10, description: '数据采集方案是否合理，样本量是否充足，分析方法是否适当' },
+  { name: 'conclusion', label: '结论逻辑', weight: 0.05, description: '结论是否基于数据得出，推理是否严密，是否存在过度推断' },
 ];
 
 const inputStyle = {
@@ -263,7 +267,7 @@ export default function Assignments() {
           <label style={{ fontSize: 13, fontWeight: 500, color: '#2C3E50' }}>评分标准</label>
           <div style={{ display: 'flex', gap: 16, marginTop: 8, marginBottom: 12 }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
-              <input type="radio" checked={!useCustomDims} onChange={() => setUseCustomDims(false)} /> 默认（准确性 40% + 完整性 35% + 创新性 25%）
+              <input type="radio" checked={!useCustomDims} onChange={() => setUseCustomDims(false)} /> 默认（实验目的/假设合理性/变量控制/方法可行性/安全风险/数据方案/结论逻辑）
             </label>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, marginBottom: 12 }}>

@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import AsyncGenerator
 
 from openai import AsyncOpenAI
@@ -13,9 +14,9 @@ class LLMClient:
         base_url: str = "",
         model: str = "",
     ):
-        self.api_key = api_key
-        self.base_url = base_url
-        self.model = model
+        self.api_key = api_key or os.getenv("LLM_API_KEY", "")
+        self.base_url = base_url or os.getenv("LLM_BASE_URL", "")
+        self.model = model or os.getenv("LLM_MODEL", "")
         self.client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
 
     async def async_chat(
