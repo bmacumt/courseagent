@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import { Send, Square, Bot, User, ChevronDown, ChevronUp, BookOpen, Loader2, Plus, MessageSquare, Trash2, Search, X, FileText, Scale, Presentation, GraduationCap, Paperclip, Stethoscope, GraduationCap as Companion, ClipboardCheck, HelpCircle } from 'lucide-react';
 import * as studentApi from '../../api/student';
 import type { ConversationSummary } from '../../api/types';
@@ -35,11 +36,11 @@ const DIAGNOSIS_PROMPT = `你是一位土木工程实验课的助教老师，负
 
 type ModuleKey = 'diagnosis' | 'companion' | 'grading' | 'qa';
 
-const moduleList: { key: ModuleKey; label: string; icon: typeof Stethoscope; active: boolean }[] = [
+const moduleList: { key: ModuleKey; label: string; icon: typeof Stethroscope; active: boolean }[] = [
   { key: 'diagnosis', label: '报告诊断', icon: Stethoscope, active: true },
   { key: 'companion', label: '全程学伴', icon: Companion, active: false },
-  { key: 'grading', label: '课业评分', icon: ClipboardCheck, active: false },
-  { key: 'qa', label: '专业问答', icon: HelpCircle, active: false },
+  { key: 'grading', label: '课业评分', icon: ClipboardCheck, active: true },
+  { key: 'qa', label: '专业问答', icon: HelpCircle, active: true },
 ];
 
 interface ChatMessage {
@@ -52,6 +53,7 @@ interface ChatMessage {
 }
 
 export default function QA() {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -476,6 +478,10 @@ export default function QA() {
                     key={mod.key}
                     onClick={() => {
                       if (!mod.active) return;
+                      if (mod.key === 'grading') {
+                        navigate('/student/assignments');
+                        return;
+                      }
                       setActiveModule(prev => prev === mod.key ? null : mod.key);
                       setReportFile(null);
                       setReportText('');
@@ -548,7 +554,7 @@ export default function QA() {
           )}
           <div style={{
             display: 'flex', gap: 10, alignItems: 'flex-end',
-            background: '#FFFFFF', border: activeModule === 'diagnosis' ? '2px solid #4A6FA5' : '1px solid #E0E3E8',
+            background: '#FFFFFF', border: (activeModule === 'diagnosis' || activeModule === 'qa') ? '2px solid #4A6FA5' : '1px solid #E0E3E8',
             borderRadius: 14,
             padding: '10px 14px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
           }}>
@@ -585,7 +591,7 @@ export default function QA() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={activeModule === 'diagnosis' ? '请输入待诊断的报告（或上传文件）...' : '输入问题，按 Enter 发送...'}
+              placeholder={activeModule === 'diagnosis' ? '请输入待诊断的报告（或上传文件）...' : activeModule === 'qa' ? '请开始输入进行专业问答' : '输入问题，按 Enter 发送...'}
               rows={1}
               style={{
                 flex: 1, border: 'none', padding: '6px 0',
