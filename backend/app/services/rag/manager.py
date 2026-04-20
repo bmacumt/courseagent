@@ -40,14 +40,14 @@ class PipelineManager:
         )
         self.mineru = MinerUClient()
 
-    def ingest_video(self, video_path: str, doc_id: str | None = None, doc_type: str = "mooc") -> dict:
-        """Full ingest pipeline: Video → extract audio → ASR → chunk → embed → store."""
+    def ingest_video(self, media_path: str, doc_id: str | None = None, doc_type: str = "mooc") -> dict:
+        """Full ingest pipeline: audio/video → extract audio → ASR → chunk → embed → store."""
         doc_id = doc_id or uuid.uuid4().hex[:12]
         try:
-            logger.info(f"[ingest_video] Transcribing {video_path}")
+            logger.info(f"[ingest_video] Transcribing {media_path}")
             from app.services.asr_client import ASRClient
             asr = ASRClient()
-            transcript = asr.transcribe_video(video_path)
+            transcript = asr.transcribe_video(media_path)
 
             if not transcript.strip():
                 return {"doc_id": doc_id, "num_chunks": 0, "status": "error", "error": "Empty transcript"}
@@ -63,7 +63,7 @@ class PipelineManager:
                 return {"doc_id": doc_id, "num_chunks": 0, "status": "error", "error": "No chunks produced"}
 
             embeddings = self.embedder.embed_texts(chunk_texts)
-            metadata = [{"doc_id": doc_id, "chunk_index": i, "source": os.path.basename(video_path)} for i in range(len(chunk_texts))]
+            metadata = [{"doc_id": doc_id, "chunk_index": i, "source": os.path.basename(media_path)} for i in range(len(chunk_texts))]
             self.vector_store.add_chunks(doc_id, chunk_texts, embeddings, metadata)
             self.retriever.rebuild_bm25()
 

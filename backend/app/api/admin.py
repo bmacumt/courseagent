@@ -100,7 +100,7 @@ async def list_users(
     current_user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ):
-    stmt = select(User)
+    stmt = select(User).where(User.is_super == False)
     if role:
         stmt = stmt.where(User.role == role)
     if class_name:
@@ -155,7 +155,7 @@ async def system_stats(
     current_user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ):
-    users = await session.scalar(select(func.count(User.id)))
+    users = await session.scalar(select(func.count(User.id)).where(User.is_super == False))
     docs = await session.scalar(select(func.count(Document.id)))
     assignments = await session.scalar(select(func.count(Assignment.id)))
     submissions = await session.scalar(select(func.count(Submission.id)))

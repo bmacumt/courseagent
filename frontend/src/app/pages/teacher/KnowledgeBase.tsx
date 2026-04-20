@@ -134,7 +134,7 @@ export default function KnowledgeBase() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 20, fontWeight: 600, color: '#2C3E50', marginBottom: 4 }}>知识库管理</h1>
-          <p style={{ fontSize: 13, color: '#7F8C8D' }}>上传课程文档或慕课视频，供 AI 评分和问答时检索引用</p>
+          <p style={{ fontSize: 13, color: '#7F8C8D' }}>上传课程文档或慕课音视频，供 AI 评分和问答时检索引用</p>
         </div>
         <button
           onClick={() => { setUploadModal(true); setUploadTitle(''); setUploadFile(null); setFormError(''); setUploadSuccess(false); }}
@@ -326,16 +326,16 @@ export default function KnowledgeBase() {
                 <option value="table">表格</option>
                 <option value="paper">论文</option>
                 <option value="ppt">课件</option>
-                <option value="mooc">慕课视频</option>
+                <option value="mooc">慕课音视频</option>
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#2C3E50', marginBottom: 6 }}>{uploadType === 'mooc' ? '视频文件' : 'PDF 文件'} <span style={{ color: '#C46B6B' }}>*</span></label>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#2C3E50', marginBottom: 6 }}>{uploadType === 'mooc' ? '音视频文件' : 'PDF 文件'} <span style={{ color: '#C46B6B' }}>*</span></label>
               <FileUploader
-                accept={uploadType === 'mooc' ? '.mp4,.avi,.mov,.mkv,.webm' : '.pdf'}
+                accept={uploadType === 'mooc' ? '.mp4,.avi,.mov,.mkv,.webm,.mp3,.wav,.aac,.flac,.ogg,.m4a,.wma' : '.pdf'}
                 maxSizeMB={uploadType === 'mooc' ? 500 : 50}
                 onFileChange={setUploadFile}
-                description={uploadType === 'mooc' ? '支持 .mp4, .avi, .mov, .mkv, .webm 格式，建议不超过 500MB' : '仅支持 .pdf 格式，建议文件大小不超过 50MB'}
+                description={uploadType === 'mooc' ? '支持音视频格式 (mp4/avi/mov/mkv/webm/mp3/wav/aac/flac/ogg/m4a/wma)，建议不超过 500MB' : '仅支持 .pdf 格式，建议文件大小不超过 50MB'}
               />
             </div>
           </>

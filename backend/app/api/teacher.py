@@ -53,6 +53,8 @@ def _build_criteria_json(req_criteria) -> str:
 # --- Knowledge Base ---
 
 VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
+AUDIO_EXTENSIONS = {".mp3", ".wav", ".aac", ".flac", ".ogg", ".m4a", ".wma"}
+MEDIA_EXTENSIONS = VIDEO_EXTENSIONS | AUDIO_EXTENSIONS
 
 
 @router.post("/knowledge", response_model=DocumentResponse)
@@ -66,11 +68,11 @@ async def upload_document(
     ext = os.path.splitext(file.filename.lower())[1]
     if ext == ".pdf":
         pass
-    elif ext in VIDEO_EXTENSIONS:
+    elif ext in MEDIA_EXTENSIONS:
         if doc_type != "mooc":
-            raise HTTPException(status_code=400, detail="视频文件请选择「慕课视频」类型")
+            raise HTTPException(status_code=400, detail="音视频文件请选择「慕课视频」类型")
     else:
-        raise HTTPException(status_code=400, detail=f"不支持的文件格式: {ext}，支持 PDF 和视频文件 (mp4/avi/mov/mkv/webm)")
+        raise HTTPException(status_code=400, detail=f"不支持的文件格式: {ext}，支持 PDF 和音视频文件 (mp4/avi/mov/mkv/webm/mp3/wav/aac/flac/ogg/m4a/wma)")
 
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     file_id = uuid.uuid4().hex[:12]
@@ -108,7 +110,7 @@ async def _run_parse_background(doc_id: int):
         try:
             rag = RAGService()
             ext = os.path.splitext(doc.file_path)[1].lower()
-            if ext in VIDEO_EXTENSIONS:
+            if ext in MEDIA_EXTENSIONS:
                 result = rag.manager.ingest_video(doc.file_path, doc_id=doc.doc_uuid, doc_type=doc.doc_type)
             else:
                 result = rag.manager.ingest_pdf(doc.file_path, doc_id=doc.doc_uuid, doc_type=doc.doc_type)
