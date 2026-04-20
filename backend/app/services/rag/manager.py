@@ -118,21 +118,21 @@ class PipelineManager:
             logger.error(f"[ingest] Failed: {e}")
             return {"doc_id": doc_id, "num_chunks": 0, "status": "error", "error": str(e)}
 
-    async def query(self, question: str, deep_research: bool = False, history: list[dict] | None = None) -> dict:
+    async def query(self, question: str, deep_research: bool = False, history: list[dict] | None = None, system_prompt: str | None = None) -> dict:
         """Query pipeline: retrieve → rerank → answer."""
         logger.info(f"[query] {question[:80]} (deep_research={deep_research})")
         if deep_research:
             return await self.deep_research_chain.answer(question, history=history)
-        return await self.qa_chain.answer(question, history=history)
+        return await self.qa_chain.answer(question, history=history, system_prompt=system_prompt)
 
-    async def stream_query(self, question: str, deep_research: bool = False, history: list[dict] | None = None) -> AsyncGenerator[str, None]:
+    async def stream_query(self, question: str, deep_research: bool = False, history: list[dict] | None = None, system_prompt: str | None = None) -> AsyncGenerator[str, None]:
         """Stream query pipeline: retrieve → rerank → stream answer."""
         logger.info(f"[stream_query] {question[:80]} (deep_research={deep_research})")
         if deep_research:
             async for event in self.deep_research_chain.stream_answer(question, history=history):
                 yield event
         else:
-            async for event in self.qa_chain.stream_answer(question, history=history):
+            async for event in self.qa_chain.stream_answer(question, history=history, system_prompt=system_prompt):
                 yield event
 
     def delete_document(self, doc_id: str) -> bool:

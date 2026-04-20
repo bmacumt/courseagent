@@ -97,6 +97,7 @@ export function streamQuestion(
   deepResearch: boolean = false,
   conversationId?: number,
   history?: { role: string; content: string }[],
+  systemPrompt?: string,
 ): AbortController {
   const controller = new AbortController();
   const token = localStorage.getItem('tunnel_auth_token');
@@ -112,6 +113,7 @@ export function streamQuestion(
       deep_research: deepResearch,
       conversation_id: conversationId || null,
       history: history || null,
+      system_prompt: systemPrompt || null,
     }),
     signal: controller.signal,
   })
@@ -187,4 +189,21 @@ export async function deleteConversation(id: number): Promise<void> {
 
 export async function saveMessages(conversationId: number, question: string, answer: string): Promise<void> {
   await client.post(`/student/conversations/${conversationId}/messages`, { question, answer });
+}
+
+export async function parseReport(file: File): Promise<string> {
+  const token = localStorage.getItem('tunnel_auth_token');
+  const formData = new FormData();
+  formData.append('file', file);
+  const resp = await fetch(`${client.defaults.baseURL}/student/qa/parse-report`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ detail: '文件解析失败' }));
+    throw new Error(err.detail || '文件解析失败');
+  }
+  const data = await resp.json();
+  return data.text;
 }

@@ -1,9 +1,46 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Square, Bot, User, ChevronDown, ChevronUp, BookOpen, Loader2, Plus, MessageSquare, Trash2, Search, X, FileText, Scale, Presentation, GraduationCap } from 'lucide-react';
+import { Send, Square, Bot, User, ChevronDown, ChevronUp, BookOpen, Loader2, Plus, MessageSquare, Trash2, Search, X, FileText, Scale, Presentation, GraduationCap, Paperclip, Stethoscope, GraduationCap as Companion, ClipboardCheck, HelpCircle } from 'lucide-react';
 import * as studentApi from '../../api/student';
 import type { ConversationSummary } from '../../api/types';
 import { MarkdownRenderer } from '../../components/shared/MarkdownRenderer';
 import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
+
+const DIAGNOSIS_PROMPT = `你是一位土木工程实验课的助教老师，负责在学生正式提交实验报告前，帮助他们发现问题并引导改进。
+
+【你的角色】
+- 像导师批改草稿，鼓励为主，不打最终分数
+- 只指出问题方向，不直接帮学生写内容
+- 用问句引导学生自己思考，而不是给答案
+
+【诊断要检查这6项】
+1. 实验目的 — 是否明确？假设有没有理论依据？
+2. 变量设计 — 自变量/因变量/控制变量是否完整？
+3. 操作步骤 — 关键参数（时间/温度/用量）是否具体？
+4. 安全措施 — 有没有识别具体风险并对应防护？
+5. 数据记录 — 表格完整吗？分析方法说清楚了吗？
+6. 结论分析 — 结论和假设一致吗？误差来源具体吗？
+
+【输出格式】
+每次诊断按以下结构回复：
+
+✅ 做得好的地方（1~2点）
+⚠️ 需要改进的问题（按模块列出，说清楚为什么是问题）
+💡 改进提示（用引导性问句，不直接给答案）
+📋 优先修改清单（最多3条，最重要的先说）
+
+【注意】
+- 报告内容不足200字时，告知学生内容太少无法诊断
+- 学生要求直接给答案时，回复"方向我来指，答案你来写"
+- 发现安全隐患必须优先指出`;
+
+type ModuleKey = 'diagnosis' | 'companion' | 'grading' | 'qa';
+
+const moduleList: { key: ModuleKey; label: string; icon: typeof Stethoscope; active: boolean }[] = [
+  { key: 'diagnosis', label: '报告诊断', icon: Stethoscope, active: true },
+  { key: 'companion', label: '全程学伴', icon: Companion, active: false },
+  { key: 'grading', label: '课业评分', icon: ClipboardCheck, active: false },
+  { key: 'qa', label: '专业问答', icon: HelpCircle, active: false },
+];
 
 interface ChatMessage {
   id: number;
@@ -35,6 +72,12 @@ export default function QA() {
     Object.fromEntries(kbCategories.map(c => [c.key, true]))
   );
   const toggleKb = (key: string) => setKbEnabled(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // Module mode
+  const [activeModule, setActiveModule] = useState<ModuleKey | null>(null);
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [reportText, setReportText] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Conversation state
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -107,8 +150,32 @@ export default function QA() {
   const isActive = loading || streaming;
 
   const handleSend = async () => {
-    if (!input.trim() || isActive) return;
-    const questionText = input.trim();
+    if (isActive) return;
+
+    // Diagnosis mode: need file or text
+    let questionText = input.trim();
+    let systemPrompt: string | undefined;
+
+    if (activeModule === 'diagnosis') {
+      // Parse uploaded file if present
+      let fileContent = reportText;
+      if (reportFile && !reportText) {
+        try {
+          fileContent = await studentApi.parseReport(reportFile);
+          setReportText(fileContent);
+        } catch (e: any) {
+          alert(e.message || '文件解析失败');
+          return;
+        }
+      }
+      if (!fileContent && !questionText) return;
+      questionText = fileContent ? (questionText ? `${fileContent}\n\n学生补充说明：${questionText}` : fileContent) : questionText;
+      systemPrompt = DIAGNOSIS_PROMPT;
+      setReportFile(null);
+      setReportText('');
+    } else {
+      if (!questionText) return;
+    }
 
     // Create conversation if needed
     let convId = activeConvId;
@@ -127,7 +194,7 @@ export default function QA() {
     const userMsg: ChatMessage = {
       id: Date.now(),
       role: 'user',
-      content: questionText,
+      content: activeModule === 'diagnosis' ? (input.trim() || '(上传报告文件)') : questionText,
       timestamp: new Date().toISOString(),
     };
     setMessages(prev => [...prev, userMsg]);
@@ -192,7 +259,7 @@ export default function QA() {
           ));
         }
       },
-    }, deepResearch, convId, history);
+    }, deepResearch, convId, history, systemPrompt);
     abortRef.current = controller;
   };
 
@@ -397,6 +464,41 @@ export default function QA() {
 
         {/* Input area */}
         <div style={{ padding: '12px 24px 16px', flexShrink: 0, borderTop: '1px solid #F0F2F5' }}>
+          {/* Module selector */}
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#2C3E50', marginBottom: 6 }}>功能模块</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {moduleList.map(mod => {
+                const isActive = activeModule === mod.key;
+                const Icon = mod.icon;
+                return (
+                  <button
+                    key={mod.key}
+                    onClick={() => {
+                      if (!mod.active) return;
+                      setActiveModule(prev => prev === mod.key ? null : mod.key);
+                      setReportFile(null);
+                      setReportText('');
+                    }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '5px 12px', borderRadius: 16,
+                      border: isActive ? '1px solid #4A6FA5' : mod.active ? '1px solid #E0E3E8' : '1px solid #F0F2F5',
+                      background: isActive ? '#4A6FA5' : mod.active ? '#FFFFFF' : '#FAFBFC',
+                      color: isActive ? '#FFFFFF' : mod.active ? '#7F8C8D' : '#D0D5DD',
+                      cursor: mod.active ? 'pointer' : 'default',
+                      fontSize: 12, fontWeight: 500, transition: 'all 0.15s',
+                      opacity: mod.active ? 1 : 0.5,
+                    }}
+                  >
+                    <Icon size={14} />
+                    {mod.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Knowledge base toggles */}
           <div style={{ marginBottom: 10 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#2C3E50', marginBottom: 6 }}>参考知识库</div>
@@ -434,17 +536,56 @@ export default function QA() {
               ))}
             </div>
           )}
+          {/* Diagnosis file indicator */}
+          {activeModule === 'diagnosis' && reportFile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: '6px 10px', background: '#EBF3FF', borderRadius: 8, border: '1px solid #B8D4E8' }}>
+              <FileText size={14} color="#4A6FA5" />
+              <span style={{ fontSize: 13, color: '#4A6FA5', flex: 1 }}>{reportFile.name}</span>
+              <button onClick={() => { setReportFile(null); setReportText(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#A4B0BE', padding: 0 }}>
+                <X size={14} />
+              </button>
+            </div>
+          )}
           <div style={{
             display: 'flex', gap: 10, alignItems: 'flex-end',
-            background: '#FFFFFF', border: '1px solid #E0E3E8', borderRadius: 14,
+            background: '#FFFFFF', border: activeModule === 'diagnosis' ? '2px solid #4A6FA5' : '1px solid #E0E3E8',
+            borderRadius: 14,
             padding: '10px 14px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
           }}>
+            {/* Paperclip for diagnosis mode */}
+            {activeModule === 'diagnosis' && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file" accept=".pdf,.docx"
+                  style={{ display: 'none' }}
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) { setReportFile(f); setReportText(''); }
+                    e.target.value = '';
+                  }}
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 36, height: 36, border: '2px solid #4A6FA5', borderRadius: 10,
+                    background: reportFile ? '#4A6FA5' : '#EBF3FF',
+                    color: reportFile ? '#FFFFFF' : '#4A6FA5',
+                    cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s',
+                  }}
+                  title="上传报告文件"
+                >
+                  <Paperclip size={16} />
+                </button>
+              </>
+            )}
             <textarea
               ref={textareaRef}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="输入问题，按 Enter 发送..."
+              placeholder={activeModule === 'diagnosis' ? '请输入待诊断的报告（或上传文件）...' : '输入问题，按 Enter 发送...'}
               rows={1}
               style={{
                 flex: 1, border: 'none', padding: '6px 0',

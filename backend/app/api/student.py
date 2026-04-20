@@ -269,6 +269,29 @@ async def ask_question(
     return QAResponse(answer=answer, sources=source_items)
 
 
+@router.post("/qa/parse-report")
+async def parse_report(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_student),
+):
+    """Parse an uploaded report file (PDF/DOCX) to plain text for diagnosis."""
+    import tempfile
+    from app.services.file_parser import parse_file
+    suffix = os.path.splitext(file.filename or "")[1].lower()
+    if suffix not in (".pdf", ".docx"):
+        raise HTTPException(status_code=400, detail="仅支持 PDF 和 DOCX 格式")
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+    try:
+        text = parse_file(tmp_path, file.filename or "report.pdf")
+    finally:
+        os.unlink(tmp_path)
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="文件内容为空或无法提取文字")
+    return {"text": text}
+
+
 @router.post("/qa/stream")
 async def stream_question(
     req: QARequest,
@@ -278,7 +301,10 @@ async def stream_question(
     rag = RAGService()
 
     async def generate():
-        async for event in rag.stream_query(req.question, deep_research=req.deep_research, history=history):
+        async for event in rag.stream_query(
+            req.question, deep_research=req.deep_research,
+            history=history, system_prompt=req.system_prompt,
+        ):
             yield event
 
     return StreamingResponse(

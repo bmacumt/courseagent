@@ -43,11 +43,11 @@ class RAGService:
         """Delete from ChromaDB."""
         return self.manager.delete_document(doc_uuid)
 
-    async def query(self, question: str, deep_research: bool = False, history: list[dict] | None = None) -> dict:
+    async def query(self, question: str, deep_research: bool = False, history: list[dict] | None = None, system_prompt: str | None = None) -> dict:
         """RAG query: global search across all documents."""
-        return await self.manager.query(question, deep_research=deep_research, history=history)
+        return await self.manager.query(question, deep_research=deep_research, history=history, system_prompt=system_prompt)
 
-    async def stream_query(self, question: str, deep_research: bool = False, history: list[dict] | None = None) -> AsyncGenerator[str, None]:
+    async def stream_query(self, question: str, deep_research: bool = False, history: list[dict] | None = None, system_prompt: str | None = None) -> AsyncGenerator[str, None]:
         """RAG streaming query."""
-        async for event in self.manager.stream_query(question, deep_research=deep_research, history=history):
+        async for event in self.manager.stream_query(question, deep_research=deep_research, history=history, system_prompt=system_prompt):
             yield event

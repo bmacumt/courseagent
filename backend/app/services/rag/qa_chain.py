@@ -79,7 +79,13 @@ class QAChain:
         context = "\n\n".join(context_parts)
         return context, sources, len(results), len(reranked)
 
-    async def answer(self, question: str, history: list[dict] | None = None) -> dict:
+    async def answer(self, question: str, history: list[dict] | None = None, system_prompt: str | None = None) -> dict:
+        # Custom system prompt: skip RAG, go straight to LLM
+        if system_prompt:
+            messages = (history or []) + [{"role": "user", "content": question}]
+            answer = await self.llm.async_chat(system_prompt, messages)
+            return {"question": question, "answer": answer, "sources": [], "num_retrieved": 0, "num_reranked": 0}
+
         context, sources, num_retrieved, num_reranked = self._retrieve_context(question)
 
         if not sources:
@@ -93,7 +99,7 @@ class QAChain:
 
         user_msg = f"参考资料：\n{context}\n\n问题：{question}"
         messages = (history or []) + [{"role": "user", "content": user_msg}]
-        answer = await self.llm.async_chat(SYSTEM_PROMPT, messages)
+        answer = await self.llm.async_chat(system_prompt or SYSTEM_PROMPT, messages)
 
         cited_sources = _filter_sources_by_citation(sources, answer)
 
@@ -105,12 +111,22 @@ class QAChain:
             "num_reranked": num_reranked,
         }
 
-    async def stream_answer(self, question: str, history: list[dict] | None = None) -> AsyncGenerator[str, None]:
+    async def stream_answer(self, question: str, history: list[dict] | None = None, system_prompt: str | None = None) -> AsyncGenerator[str, None]:
         """Yield SSE events: sources -> tokens -> done.
 
         Sources are sent AFTER tokens so we can filter by actual citations.
         Frontend receives: tokens -> done (with sources in done event).
         """
+        # Custom system prompt: skip RAG, go straight to LLM
+        if system_prompt:
+            messages = (history or []) + [{"role": "user", "content": question}]
+            full_answer = ""
+            async for token in self.llm.async_stream_chat(system_prompt, messages):
+                full_answer += token
+                yield f"event: token\ndata: {json.dumps({'content': token})}\n\n"
+            yield f"event: done\ndata: {json.dumps({'sources': []})}\n\n"
+            return
+
         context, sources, num_retrieved, num_reranked = self._retrieve_context(question)
 
         if not sources:
@@ -121,7 +137,7 @@ class QAChain:
         messages = (history or []) + [{"role": "user", "content": user_msg}]
 
         full_answer = ""
-        async for token in self.llm.async_stream_chat(SYSTEM_PROMPT, messages):
+        async for token in self.llm.async_stream_chat(system_prompt or SYSTEM_PROMPT, messages):
             full_answer += token
             yield f"event: token\ndata: {json.dumps({'content': token})}\n\n"
 

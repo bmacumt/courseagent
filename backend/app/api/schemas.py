@@ -274,6 +274,7 @@ class QARequest(BaseModel):
     deep_research: bool = False
     conversation_id: int | None = None
     history: list[ChatMessageInput] | None = None
+    system_prompt: str | None = None
 
 class QASourceItem(BaseModel):
     index: int
