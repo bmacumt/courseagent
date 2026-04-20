@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, BookOpen, Quote, Calendar, Star } from 'lucide-react';
+import { ArrowLeft, BookOpen, Quote, Calendar, Star, AlertTriangle } from 'lucide-react';
 import * as studentApi from '../../api/student';
 import type { ReportResponse } from '../../api/types';
 import { ScoreCircle } from '../../components/shared/ScoreCircle';
@@ -96,6 +96,32 @@ export default function StudentReport() {
           })}
         </div>
       </div>
+
+      {/* Manipulation Warning */}
+      {report.manipulation_warning?.detected && (
+        <div style={{
+          background: report.manipulation_warning.severity === 'high' ? '#FFF5F5' : '#FFFBEB',
+          border: `1px solid ${report.manipulation_warning.severity === 'high' ? '#FEB2B2' : '#FDE68A'}`,
+          borderRadius: 10, padding: '16px 20px', marginBottom: 20, display: 'flex', gap: 12,
+        }}>
+          <AlertTriangle size={20} color={report.manipulation_warning.severity === 'high' ? '#C46B6B' : '#D4A843'} style={{ flexShrink: 0, marginTop: 2 }} />
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#C46B6B', marginBottom: 6 }}>
+              检测到诱导性语句（{report.manipulation_warning.severity === 'high' ? '严重' : report.manipulation_warning.severity === 'medium' ? '中等' : '轻微'}）
+            </div>
+            {report.manipulation_warning.fragments.length > 0 && (
+              <div style={{ marginBottom: 6 }}>
+                {report.manipulation_warning.fragments.map((f, i) => (
+                  <div key={i} style={{ fontSize: 13, color: '#7F8C8D', fontStyle: 'italic', padding: '2px 0' }}>
+                    "{f}"
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ fontSize: 13, color: '#7F8C8D' }}>{report.manipulation_warning.comment}</div>
+          </div>
+        </div>
+      )}
 
       {/* Dimension details with comments */}
       <div style={{ background: '#FFFFFF', borderRadius: 12, border: '1px solid #E8ECF0', padding: '24px 28px', marginBottom: 20 }}>

@@ -19,7 +19,7 @@ from app.db.models import User, Assignment, Submission, Report, Conversation, Co
 from app.api.schemas import (
     AssignmentForStudent, AssignmentDetail,
     SubmitAnswer, SubmissionResponse, SubmissionSummary,
-    ReportResponse, DimensionScoreItem,
+    ReportResponse, DimensionScoreItem, ManipulationWarningResponse,
     QARequest, QAResponse, QASourceItem,
     SaveMessagesRequest, ConversationCreateRequest, ConversationSummary, ConversationDetail, ConversationMessageItem,
 )
@@ -313,12 +313,10 @@ def _format_report(report: Report, assignment=None) -> ReportResponse:
         references=json.loads(report.references),
         regulations_found=json.loads(report.regulations_found),
         regulations_cited=json.loads(report.regulations_cited),
+        manipulation_warning=ManipulationWarningResponse(**json.loads(report.manipulation_warning)) if report.manipulation_warning else None,
         created_at=report.created_at,
         assignment_title=assignment.title if assignment else None,
     )
-
-
-# --- Conversations ---
 
 @router.get("/conversations", response_model=list[ConversationSummary])
 async def list_conversations(

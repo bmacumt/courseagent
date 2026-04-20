@@ -240,6 +240,13 @@ class DimensionScoreItem(BaseModel):
     weighted_score: float
     comment: str
 
+class ManipulationWarningResponse(BaseModel):
+    detected: bool = False
+    severity: str = "none"
+    fragments: list[str] = []
+    comment: str = ""
+
+
 class ReportResponse(BaseModel):
     id: int
     submission_id: int
@@ -250,6 +257,7 @@ class ReportResponse(BaseModel):
     references: list[str]
     regulations_found: list[str]
     regulations_cited: list[str]
+    manipulation_warning: ManipulationWarningResponse | None = None
     created_at: datetime | None = None
     student_real_name: str | None = None
     assignment_title: str | None = None

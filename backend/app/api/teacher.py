@@ -19,7 +19,7 @@ from app.db.models import User, Document, Assignment, Submission, Report
 from app.api.schemas import (
     DocumentResponse, CreateAssignmentRequest, UpdateAssignmentRequest,
     AssignmentResponse, AssignmentSummary, SubmissionSummary, SubmissionDetail, ReportResponse,
-    DimensionScoreItem,
+    DimensionScoreItem, ManipulationWarningResponse,
 )
 from app.services.rag_service import RAGService
 
@@ -457,6 +457,7 @@ def _format_report(report: Report, assignment=None, student=None) -> ReportRespo
         references=json.loads(report.references),
         regulations_found=json.loads(report.regulations_found),
         regulations_cited=json.loads(report.regulations_cited),
+        manipulation_warning=ManipulationWarningResponse(**json.loads(report.manipulation_warning)) if report.manipulation_warning else None,
         created_at=report.created_at,
         student_real_name=student.real_name if student else None,
         assignment_title=assignment.title if assignment else None,

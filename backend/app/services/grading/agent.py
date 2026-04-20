@@ -2,9 +2,9 @@
 import asyncio
 import logging
 
-from app.services.grading.models import DEFAULT_CRITERIA, DimensionResult, GradingCriteria, GradingReport
+from app.services.grading.models import DEFAULT_CRITERIA, DimensionResult, GradingCriteria, GradingReport, ManipulationWarning
 from app.services.grading.rag_bridge import RAGBridge
-from app.services.grading.scorer import check_regulations, generate_feedback, score_dimension
+from app.services.grading.scorer import check_regulations, detect_manipulation, generate_feedback, score_dimension
 from app.services.rag.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
@@ -23,6 +23,16 @@ class GradingAgent:
     ) -> GradingReport:
         """Full grading pipeline: RAG retrieve → score dimensions → verify regulations → summarize."""
         criteria = criteria or DEFAULT_CRITERIA
+
+        # Step 0: Manipulation detection
+        logger.info(f"[grade] Checking for manipulative language")
+        manip_result = await detect_manipulation(self.llm, student_answer)
+        manipulation_warning = None
+        manip_summary = None
+        if manip_result.get("detected"):
+            manipulation_warning = ManipulationWarning(**manip_result)
+            manip_summary = f"检测到诱导性语句（{manip_result['severity']}级别）：{'; '.join(manip_result.get('fragments', []))}"
+            logger.info(f"[grade] Manipulation detected: {manip_result['severity']} — {manip_result.get('fragments', [])}")
 
         # Step 1: RAG retrieval
         logger.info(f"[grade] Retrieving regulations for: {question[:50]}")
@@ -81,6 +91,7 @@ class GradingAgent:
             total_score=total_score,
             max_score=criteria.max_score,
             regulations_summary=reg_summary,
+            manipulation_summary=manip_summary,
         )
 
         references = [r["text"][:150] for r in regulations[:5]] if regulations else []
@@ -93,6 +104,7 @@ class GradingAgent:
             references=references,
             regulations_found=regulations_found[:5],
             regulations_cited=regulations_cited[:5],
+            manipulation_warning=manipulation_warning,
         )
 
         logger.info(f"[grade] Done: total={total_score}/{criteria.max_score}")

@@ -52,6 +52,9 @@ class GradingService:
                 references=json.dumps(report.references, ensure_ascii=False),
                 regulations_found=json.dumps(report.regulations_found, ensure_ascii=False),
                 regulations_cited=json.dumps(report.regulations_cited, ensure_ascii=False),
+                manipulation_warning=json.dumps(
+                    report.manipulation_warning.model_dump(), ensure_ascii=False
+                ) if report.manipulation_warning else None,
             )
             session.add(db_report)
             submission.status = "graded"

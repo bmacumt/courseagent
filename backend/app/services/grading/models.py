@@ -73,6 +73,13 @@ class DimensionResult(BaseModel):
     comment: str
 
 
+class ManipulationWarning(BaseModel):
+    detected: bool = False
+    severity: str = "none"  # none, low, medium, high
+    fragments: list[str] = []
+    comment: str = ""
+
+
 class GradingReport(BaseModel):
     total_score: float
     max_score: int = 100
@@ -81,3 +88,4 @@ class GradingReport(BaseModel):
     references: list[str] = []
     regulations_found: list[str] = []
     regulations_cited: list[str] = []
+    manipulation_warning: ManipulationWarning | None = None

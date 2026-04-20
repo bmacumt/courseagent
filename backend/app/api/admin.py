@@ -16,7 +16,7 @@ from app.api.schemas import (
     CreateUserRequest, UpdateUserRequest, UserResponse,
     BatchStudentRequest, BatchImportResult,
     SystemStats, SettingItem, SettingUpdate,
-    AssignmentSummary, SubmissionSummary, SubmissionDetail, ReportResponse, DimensionScoreItem,
+    AssignmentSummary, SubmissionSummary, SubmissionDetail, ReportResponse, DimensionScoreItem, ManipulationWarningResponse,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -384,6 +384,7 @@ async def admin_get_report(
         references=json.loads(report.references),
         regulations_found=json.loads(report.regulations_found),
         regulations_cited=json.loads(report.regulations_cited),
+        manipulation_warning=ManipulationWarningResponse(**json.loads(report.manipulation_warning)) if report.manipulation_warning else None,
         created_at=report.created_at,
         student_real_name=student.real_name if student else None,
         assignment_title=assignment.title if assignment else None,

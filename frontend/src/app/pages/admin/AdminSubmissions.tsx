@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ArrowLeft, Download, Eye, ExternalLink, FileText, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download, Eye, ExternalLink, FileText, Loader2, AlertTriangle } from 'lucide-react';
 import * as adminApi from '../../api/admin';
 import type { SubmissionSummary, AssignmentSummary, SubmissionDetail, ReportResponse } from '../../api/types';
 import { StatusTag } from '../../components/shared/StatusTag';
@@ -239,6 +239,23 @@ export default function AdminSubmissions() {
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#2C3E50', marginBottom: 8 }}>评语</div>
                 <div style={{ background: '#F7F8FA', borderRadius: 8, border: '1px solid #E8ECF0', padding: '16px 20px', fontSize: 13, color: '#2C3E50', lineHeight: 1.7 }}>
                   <MarkdownRenderer content={report.feedback} />
+                </div>
+              </div>
+            )}
+            {report.manipulation_warning?.detected && (
+              <div style={{
+                background: report.manipulation_warning.severity === 'high' ? '#FFF5F5' : '#FFFBEB',
+                border: `1px solid ${report.manipulation_warning.severity === 'high' ? '#FEB2B2' : '#FDE68A'}`,
+                borderRadius: 8, padding: '12px 16px', marginTop: 16, display: 'flex', gap: 10,
+              }}>
+                <AlertTriangle size={18} color={report.manipulation_warning.severity === 'high' ? '#C46B6B' : '#D4A843'} style={{ flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#C46B6B', marginBottom: 4 }}>
+                    诱导性语句检测（{report.manipulation_warning.severity === 'high' ? '严重' : report.manipulation_warning.severity === 'medium' ? '中等' : '轻微'}）
+                  </div>
+                  {report.manipulation_warning.fragments.map((f, i) => (
+                    <div key={i} style={{ fontSize: 12, color: '#7F8C8D', fontStyle: 'italic' }}>"{f}"</div>
+                  ))}
                 </div>
               </div>
             )}

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { ClipboardList } from 'lucide-react';
 import * as adminApi from '../../api/admin';
 import type { AssignmentSummary } from '../../api/types';
 
 export default function AdminAssignments() {
+  const navigate = useNavigate();
   const [assignments, setAssignments] = useState<AssignmentSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -79,7 +81,7 @@ export default function AdminAssignments() {
                 </td>
                 <td style={{ padding: '14px 18px' }}>
                   {a.submission_count > 0 && (
-                    <button onClick={() => window.location.hash = `/admin/submissions/${a.id}`} style={{
+                    <button onClick={() => navigate(`/admin/submissions/${a.id}`)} style={{
                       display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px',
                       border: '1px solid #B8D4E8', borderRadius: 5, background: '#EBF3FF', color: '#4A6FA5', cursor: 'pointer', fontSize: 12,
                     }}>

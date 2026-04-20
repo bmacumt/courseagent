@@ -179,6 +179,13 @@ export interface DimensionScore {
   comment: string;
 }
 
+export interface ManipulationWarning {
+  detected: boolean;
+  severity: 'none' | 'low' | 'medium' | 'high';
+  fragments: string[];
+  comment: string;
+}
+
 export interface ReportResponse {
   id: number;
   submission_id: number;
@@ -189,6 +196,7 @@ export interface ReportResponse {
   references: string[];
   regulations_found: string[];
   regulations_cited: string[];
+  manipulation_warning: ManipulationWarning | null;
   created_at: string | null;
   student_real_name: string | null;
   assignment_title: string | null;

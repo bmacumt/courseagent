@@ -92,6 +92,7 @@ class Report(Base):
     references: Mapped[str] = mapped_column(Text, default="[]")
     regulations_found: Mapped[str] = mapped_column(Text, default="[]")
     regulations_cited: Mapped[str] = mapped_column(Text, default="[]")
+    manipulation_warning: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     submission = relationship("Submission", back_populates="report")
