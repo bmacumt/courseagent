@@ -276,3 +276,56 @@ export interface VerifyResult {
   error: string | null;
   tested: string[];
 }
+
+// Student Profile (全程学伴)
+export interface DimensionAverage {
+  name: string;
+  label: string;
+  avg_score: number;
+  count: number;
+  comment_samples: string[];
+}
+
+export interface WeakDimension {
+  name: string;
+  label: string;
+  avg_score: number;
+}
+
+export interface ScoreTrendPoint {
+  date: string;
+  score: number;
+  assignment_title?: string;
+}
+
+export interface DimensionHistory {
+  name: string;
+  label: string;
+  scores: { date: string; score: number; assignment_title?: string }[];
+}
+
+export interface StudentProfileResponse {
+  student_id: number;
+  student_name: string | null;
+  real_name: string | null;
+  class_name: string | null;
+  total_submissions: number;
+  graded_submissions: number;
+  average_score: number;
+  score_trend: ScoreTrendPoint[];
+  dimension_averages: DimensionAverage[];
+  weak_dimensions: WeakDimension[];
+  dimension_history: DimensionHistory[];
+  learning_advice: string;
+}
+
+export interface StudentListItem {
+  student_id: number;
+  username: string;
+  real_name: string | null;
+  student_id_field: string | null;
+  class_name: string | null;
+  submission_count: number;
+  average_score: number;
+  dimension_averages: DimensionAverage[];
+}

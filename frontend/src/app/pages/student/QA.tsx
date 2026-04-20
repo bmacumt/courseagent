@@ -38,7 +38,7 @@ type ModuleKey = 'diagnosis' | 'companion' | 'grading' | 'qa';
 
 const moduleList: { key: ModuleKey; label: string; icon: typeof Stethroscope; active: boolean }[] = [
   { key: 'diagnosis', label: '报告诊断', icon: Stethoscope, active: true },
-  { key: 'companion', label: '全程学伴', icon: Companion, active: false },
+  { key: 'companion', label: '全程学伴', icon: Companion, active: true },
   { key: 'grading', label: '课业评分', icon: ClipboardCheck, active: true },
   { key: 'qa', label: '专业问答', icon: HelpCircle, active: true },
 ];
@@ -480,6 +480,10 @@ export default function QA() {
                       if (!mod.active) return;
                       if (mod.key === 'grading') {
                         navigate('/student/assignments');
+                        return;
+                      }
+                      if (mod.key === 'companion') {
+                        navigate('/student/profile');
                         return;
                       }
                       setActiveModule(prev => prev === mod.key ? null : mod.key);

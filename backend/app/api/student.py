@@ -22,6 +22,7 @@ from app.api.schemas import (
     ReportResponse, DimensionScoreItem, ManipulationWarningResponse,
     QARequest, QAResponse, QASourceItem,
     SaveMessagesRequest, ConversationCreateRequest, ConversationSummary, ConversationDetail, ConversationMessageItem,
+    StudentProfileResponse,
 )
 from app.services.grading.service import GradingService  # noqa: lazy import in _run_grading_background
 from app.services.rag_service import RAGService
@@ -154,6 +155,14 @@ async def _run_grading_background(submission_id: int):
     async with _db_engine.async_session() as session:
         grading = GradingService()
         await grading.run_grading(submission_id, session)
+        # Precompute profile cache after successful grading
+        submission = await session.get(Submission, submission_id)
+        if submission and submission.status == "graded":
+            from app.services.profile_service import precompute_and_cache
+            try:
+                await precompute_and_cache(submission.student_id)
+            except Exception:
+                pass
 
 
 @router.get("/submissions", response_model=list[SubmissionSummary])
@@ -423,3 +432,28 @@ async def delete_conversation(
     await session.delete(conv)
     await session.commit()
     return {"status": "deleted"}
+
+
+# --- Profile (全程学伴) ---
+
+@router.get("/profile", response_model=StudentProfileResponse)
+async def get_student_profile(
+    current_user: User = Depends(require_student),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.services.profile_service import get_cached_profile
+    profile, advice = await get_cached_profile(current_user.id, session)
+    return StudentProfileResponse(
+        student_id=current_user.id,
+        student_name=current_user.username,
+        real_name=current_user.real_name,
+        class_name=current_user.class_name,
+        total_submissions=profile["total_submissions"],
+        graded_submissions=profile["graded_submissions"],
+        average_score=profile["average_score"],
+        score_trend=profile["score_trend"],
+        dimension_averages=profile["dimension_averages"],
+        weak_dimensions=profile["weak_dimensions"],
+        dimension_history=profile["dimension_history"],
+        learning_advice=advice,
+    )

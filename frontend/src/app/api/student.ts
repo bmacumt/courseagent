@@ -8,6 +8,7 @@ import type {
   QAResponse,
   ConversationSummary,
   ConversationDetail,
+  StudentProfileResponse,
 } from './types';
 
 // Assignments
@@ -206,4 +207,9 @@ export async function parseReport(file: File): Promise<string> {
   }
   const data = await resp.json();
   return data.text;
+}
+
+export async function getStudentProfile(): Promise<StudentProfileResponse> {
+  const res = await client.get<StudentProfileResponse>('/student/profile');
+  return res.data;
 }

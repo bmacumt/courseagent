@@ -342,3 +342,57 @@ class ConversationDetail(BaseModel):
     created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+# --- Student Profile (全程学伴) ---
+
+class DimensionAverage(BaseModel):
+    name: str
+    label: str
+    avg_score: float
+    count: int
+    comment_samples: list[str] = []
+
+class WeakDimension(BaseModel):
+    name: str
+    label: str
+    avg_score: float
+
+class ScoreTrendPoint(BaseModel):
+    date: str
+    score: float
+    assignment_title: str | None = None
+
+class DimensionHistoryPoint(BaseModel):
+    date: str
+    score: int
+    assignment_title: str | None = None
+
+class DimensionHistory(BaseModel):
+    name: str
+    label: str
+    scores: list[DimensionHistoryPoint]
+
+class StudentProfileResponse(BaseModel):
+    student_id: int
+    student_name: str | None = None
+    real_name: str | None = None
+    class_name: str | None = None
+    total_submissions: int
+    graded_submissions: int
+    average_score: float
+    score_trend: list[ScoreTrendPoint]
+    dimension_averages: list[DimensionAverage]
+    weak_dimensions: list[WeakDimension]
+    dimension_history: list[DimensionHistory]
+    learning_advice: str
+
+class StudentListItem(BaseModel):
+    student_id: int
+    username: str
+    real_name: str | None = None
+    student_id_field: str | None = None
+    class_name: str | None = None
+    submission_count: int
+    average_score: float
+    dimension_averages: list[DimensionAverage] = []

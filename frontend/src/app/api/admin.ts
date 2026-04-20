@@ -11,6 +11,8 @@ import type {
   SubmissionSummary,
   SubmissionDetail,
   ReportResponse,
+  StudentProfileResponse,
+  StudentListItem,
 } from './types';
 
 export async function getUsers(params?: { role?: string; class_name?: string }): Promise<UserResponse[]> {
@@ -80,5 +82,15 @@ export async function getAdminSubmissionDetail(submissionId: number): Promise<Su
 
 export async function getAdminReport(reportId: number): Promise<ReportResponse> {
   const res = await client.get<ReportResponse>(`/admin/reports/${reportId}`);
+  return res.data;
+}
+
+export async function getAdminStudents(): Promise<StudentListItem[]> {
+  const res = await client.get<StudentListItem[]>('/admin/students');
+  return res.data;
+}
+
+export async function getAdminStudentProfile(studentId: number): Promise<StudentProfileResponse> {
+  const res = await client.get<StudentProfileResponse>(`/admin/students/${studentId}/profile`);
   return res.data;
 }

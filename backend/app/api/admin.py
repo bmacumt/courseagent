@@ -17,6 +17,7 @@ from app.api.schemas import (
     BatchStudentRequest, BatchImportResult,
     SystemStats, SettingItem, SettingUpdate,
     AssignmentSummary, SubmissionSummary, SubmissionDetail, ReportResponse, DimensionScoreItem, ManipulationWarningResponse,
+    StudentProfileResponse, StudentListItem,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -388,4 +389,43 @@ async def admin_get_report(
         created_at=report.created_at,
         student_real_name=student.real_name if student else None,
         assignment_title=assignment.title if assignment else None,
+    )
+
+
+# --- Student Profile (学伴分析) ---
+
+@router.get("/students", response_model=list[StudentListItem])
+async def list_all_students(
+    current_user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.services.profile_service import list_students_with_stats
+    return await list_students_with_stats(session, teacher_id=None)
+
+
+@router.get("/students/{student_id}/profile", response_model=StudentProfileResponse)
+async def get_admin_student_profile(
+    student_id: int,
+    current_user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    student = await session.get(User, student_id)
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    from app.services.profile_service import get_cached_profile
+    profile, advice = await get_cached_profile(student_id, session)
+    return StudentProfileResponse(
+        student_id=student_id,
+        student_name=student.username,
+        real_name=student.real_name,
+        class_name=student.class_name,
+        total_submissions=profile["total_submissions"],
+        graded_submissions=profile["graded_submissions"],
+        average_score=profile["average_score"],
+        score_trend=profile["score_trend"],
+        dimension_averages=profile["dimension_averages"],
+        weak_dimensions=profile["weak_dimensions"],
+        dimension_history=profile["dimension_history"],
+        learning_advice=advice,
     )

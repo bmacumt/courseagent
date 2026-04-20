@@ -20,6 +20,7 @@ from app.api.schemas import (
     DocumentResponse, CreateAssignmentRequest, UpdateAssignmentRequest,
     AssignmentResponse, AssignmentSummary, SubmissionSummary, SubmissionDetail, ReportResponse,
     DimensionScoreItem, ManipulationWarningResponse,
+    StudentProfileResponse, StudentListItem,
 )
 from app.services.rag_service import RAGService
 
@@ -535,4 +536,50 @@ async def export_grades(
         iter([content]),
         media_type="text/csv; charset=utf-8-sig",
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"},
+    )
+
+
+# --- Student Profile (学伴分析) ---
+
+@router.get("/students", response_model=list[StudentListItem])
+async def list_teacher_students(
+    current_user: User = Depends(require_teacher),
+    session: AsyncSession = Depends(get_session),
+):
+    from app.services.profile_service import list_students_with_stats
+    return await list_students_with_stats(session, teacher_id=current_user.id)
+
+
+@router.get("/students/{student_id}/profile", response_model=StudentProfileResponse)
+async def get_teacher_student_profile(
+    student_id: int,
+    current_user: User = Depends(require_teacher),
+    session: AsyncSession = Depends(get_session),
+):
+    # Verify student has submitted to this teacher's assignments
+    exists = await session.scalar(
+        select(Submission.id)
+        .join(Assignment, Assignment.id == Submission.assignment_id)
+        .where(Submission.student_id == student_id, Assignment.teacher_id == current_user.id)
+        .limit(1)
+    )
+    if not exists:
+        raise HTTPException(status_code=404, detail="Student not found or no submissions to your assignments")
+
+    from app.services.profile_service import get_cached_profile
+    student = await session.get(User, student_id)
+    profile, advice = await get_cached_profile(student_id, session)
+    return StudentProfileResponse(
+        student_id=student_id,
+        student_name=student.username if student else None,
+        real_name=student.real_name if student else None,
+        class_name=student.class_name if student else None,
+        total_submissions=profile["total_submissions"],
+        graded_submissions=profile["graded_submissions"],
+        average_score=profile["average_score"],
+        score_trend=profile["score_trend"],
+        dimension_averages=profile["dimension_averages"],
+        weak_dimensions=profile["weak_dimensions"],
+        dimension_history=profile["dimension_history"],
+        learning_advice=advice,
     )

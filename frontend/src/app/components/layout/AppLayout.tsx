@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, Users, Cpu, Database, ClipboardList,
   FileText, MessageSquare, LogOut, ChevronLeft, ChevronRight, Menu,
-  User, Mail, KeyRound, Loader2, X,
+  User, Mail, KeyRound, Loader2, X, GraduationCap,
 } from 'lucide-react';
 import * as authApi from '../../api/auth';
 import type { UserResponse } from '../../api/types';
@@ -15,6 +15,7 @@ const adminNav = [
   { path: '/admin/users', label: '用户管理', icon: Users },
   { path: '/admin/knowledge', label: '知识库', icon: Database },
   { path: '/admin/assignments', label: '作业管理', icon: ClipboardList },
+  { path: '/admin/students', label: '学伴分析', icon: GraduationCap },
   { path: '/admin/models', label: '模型管理', icon: Cpu },
 ];
 
@@ -22,12 +23,14 @@ const teacherNav = [
   { path: '/teacher/dashboard', label: '教学概览', icon: LayoutDashboard },
   { path: '/teacher/knowledge', label: '知识库管理', icon: Database },
   { path: '/teacher/assignments', label: '作业管理', icon: ClipboardList },
+  { path: '/teacher/students', label: '学伴分析', icon: GraduationCap },
 ];
 
 const studentNav = [
   { path: '/student/dashboard', label: '学习概览', icon: LayoutDashboard },
   { path: '/student/assignments', label: '我的作业', icon: ClipboardList },
   { path: '/student/submissions', label: '我的提交', icon: FileText },
+  { path: '/student/profile', label: '全程学伴', icon: GraduationCap },
   { path: '/student/qa', label: '知识问答', icon: MessageSquare },
 ];
 

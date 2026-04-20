@@ -8,16 +8,19 @@ import ModelManagement from './pages/admin/ModelManagement';
 import AdminKnowledge from './pages/admin/AdminKnowledge';
 import AdminAssignments from './pages/admin/AdminAssignments';
 import AdminSubmissions from './pages/admin/AdminSubmissions';
+import AdminStudents from './pages/admin/AdminStudents';
 import TeacherDashboard from './pages/teacher/TeacherDashboard';
 import KnowledgeBase from './pages/teacher/KnowledgeBase';
 import Assignments from './pages/teacher/Assignments';
 import Submissions from './pages/teacher/Submissions';
 import TeacherReport from './pages/teacher/Report';
+import TeacherStudents from './pages/teacher/TeacherStudents';
 import StudentDashboard from './pages/student/StudentDashboard';
 import AssignmentList from './pages/student/AssignmentList';
 import SubmitAnswer from './pages/student/SubmitAnswer';
 import MySubmissions from './pages/student/MySubmissions';
 import StudentReport from './pages/student/StudentReport';
+import StudentProfile from './pages/student/StudentProfile';
 import QA from './pages/student/QA';
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -44,6 +47,8 @@ export const router = createBrowserRouter([
       { path: 'admin/knowledge', element: <AdminKnowledge /> },
       { path: 'admin/assignments', element: <AdminAssignments /> },
       { path: 'admin/submissions/:id', element: <AdminSubmissions /> },
+      { path: 'admin/students', element: <AdminStudents /> },
+      { path: 'admin/students/:id/profile', element: <StudentProfile /> },
 
       // Teacher routes
       { path: 'teacher/dashboard', element: <TeacherDashboard /> },
@@ -51,6 +56,8 @@ export const router = createBrowserRouter([
       { path: 'teacher/assignments', element: <Assignments /> },
       { path: 'teacher/assignments/:id/submissions', element: <Submissions /> },
       { path: 'teacher/reports/:id', element: <TeacherReport /> },
+      { path: 'teacher/students', element: <TeacherStudents /> },
+      { path: 'teacher/students/:id/profile', element: <StudentProfile /> },
 
       // Student routes
       { path: 'student/dashboard', element: <StudentDashboard /> },
@@ -58,6 +65,7 @@ export const router = createBrowserRouter([
       { path: 'student/assignments/:id/submit', element: <SubmitAnswer /> },
       { path: 'student/submissions', element: <MySubmissions /> },
       { path: 'student/reports/:id', element: <StudentReport /> },
+      { path: 'student/profile', element: <StudentProfile /> },
       { path: 'student/qa', element: <QA /> },
     ],
   },

@@ -7,6 +7,8 @@ import type {
   SubmissionSummary,
   SubmissionDetail,
   ReportResponse,
+  StudentProfileResponse,
+  StudentListItem,
 } from './types';
 
 // Knowledge
@@ -123,4 +125,14 @@ function parseFilename(disposition: string | null): string {
   const ascii = disposition.match(/filename="?(.+?)"?(?:;|$)/i);
   if (ascii) return ascii[1].replace(/^"|"$/g, '');
   return 'attachment';
+}
+
+export async function getTeacherStudents(): Promise<StudentListItem[]> {
+  const res = await client.get<StudentListItem[]>('/teacher/students');
+  return res.data;
+}
+
+export async function getTeacherStudentProfile(studentId: number): Promise<StudentProfileResponse> {
+  const res = await client.get<StudentProfileResponse>(`/teacher/students/${studentId}/profile`);
+  return res.data;
 }
