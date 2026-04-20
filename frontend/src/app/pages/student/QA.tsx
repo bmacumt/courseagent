@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Square, Bot, User, ChevronDown, ChevronUp, BookOpen, Loader2, Plus, MessageSquare, Trash2, Search, X } from 'lucide-react';
+import { Send, Square, Bot, User, ChevronDown, ChevronUp, BookOpen, Loader2, Plus, MessageSquare, Trash2, Search, X, FileText, Scale, Presentation, GraduationCap } from 'lucide-react';
 import * as studentApi from '../../api/student';
 import type { ConversationSummary } from '../../api/types';
 import { MarkdownRenderer } from '../../components/shared/MarkdownRenderer';
@@ -23,6 +23,18 @@ export default function QA() {
   const [expandedSources, setExpandedSources] = useState<Record<number, boolean>>({});
   const [deepResearch, setDeepResearch] = useState(false);
   const [expandedResearch, setExpandedResearch] = useState<Record<number, boolean>>({});
+
+  // Knowledge base toggles (display only, backend always uses all)
+  const kbCategories = [
+    { key: 'regulation', label: '国家规范', icon: Scale },
+    { key: 'textbook', label: '专业教材', icon: BookOpen },
+    { key: 'courseware', label: '课程课件', icon: Presentation },
+    { key: 'paper', label: '科研论文', icon: GraduationCap },
+  ] as const;
+  const [kbEnabled, setKbEnabled] = useState<Record<string, boolean>>(
+    Object.fromEntries(kbCategories.map(c => [c.key, true]))
+  );
+  const toggleKb = (key: string) => setKbEnabled(prev => ({ ...prev, [key]: !prev[key] }));
 
   // Conversation state
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -385,6 +397,34 @@ export default function QA() {
 
         {/* Input area */}
         <div style={{ padding: '12px 24px 16px', flexShrink: 0, borderTop: '1px solid #F0F2F5' }}>
+          {/* Knowledge base toggles */}
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#2C3E50', marginBottom: 6 }}>参考知识库</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {kbCategories.map(cat => {
+                const on = kbEnabled[cat.key];
+                const Icon = cat.icon;
+                return (
+                  <button
+                    key={cat.key}
+                    onClick={() => toggleKb(cat.key)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '5px 12px', borderRadius: 16,
+                      border: on ? '1px solid #4A6FA5' : '1px solid #E0E3E8',
+                      background: on ? '#EBF3FF' : '#FFFFFF',
+                      color: on ? '#4A6FA5' : '#A4B0BE',
+                      cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <Icon size={14} />
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           {messages.length > 0 && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
               {suggestedQuestions.slice(0, 3).map(q => (
