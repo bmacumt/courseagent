@@ -1,162 +1,133 @@
-# CourseAgent
+# 隧道工程课程智能体平台
 
-CourseAgent 是一个智能课程管理与评分系统，利用先进的 AI 技术为教育工作者和学生提供全面的课程管理解决方案。
+基于 RAG + LLM 的隧道工程教学辅助系统，支持作业智能评改、知识问答、能力画像。
 
-## 项目概述
+## 技术栈
 
-CourseAgent 旨在简化和自动化课程管理流程，包括作业提交、自动评分、知识库管理和学生进度跟踪。
-
-## 主要功能
-
-### 1. 用户认证与权限管理
-- 多角色支持：学生、教师、管理员
-- JWT 令牌认证
-- 基于角色的访问控制
-
-### 2. RAG（检索增强生成）系统
-- 文档解析与分块
-- 向量存储与语义搜索
-- 智能问答系统
-- 法规文档处理
-
-### 3. 自动评分系统
-- 多维度评分标准
-- AI 驱动的答案评估
-- 详细反馈生成
-- 法规符合性检查
-
-### 4. 前后端分离架构
-- 现代化的 React 前端
-- FastAPI 后端服务
-- RESTful API 设计
+| 层 | 技术 |
+|---|------|
+| 前端 | React 18 + TypeScript + Vite + Recharts |
+| 后端 | Python 3.12 + FastAPI + SQLAlchemy (async) |
+| 数据库 | SQLite + ChromaDB（向量） |
+| AI | DeepSeek（LLM）/ SiliconFlow（Embedding + Reranker）/ MinerU（PDF 解析） |
 
 ## 项目结构
 
 ```
 courseagent/
-├── frontend/          # React 前端应用
-├── backend/          # 后端服务
-├── pipelines/        # 核心处理管道
-│   ├── 01_auth/     # 认证模块
-│   ├── 03_rag/      # RAG 系统
-│   ├── 04_grading/  # 评分系统
-│   └── 05_backend/  # 后端服务
-├── docs/            # 项目文档
-└── 方案.md          # 详细技术方案
+├── backend/                # 后端服务（FastAPI）
+│   ├── app/
+│   │   ├── api/            # 路由层（admin/teacher/student/auth）
+│   │   ├── auth/           # JWT 认证
+│   │   ├── db/             # 数据库模型 & 引擎
+│   │   ├── services/       # 业务逻辑
+│   │   │   ├── rag/        # RAG 管线（检索 + 问答）
+│   │   │   ├── grading/    # 评分智能体
+│   │   │   ├── profile_service.py   # 学伴能力画像
+│   │   │   └── rag_service.py       # RAG 服务门面
+│   │   └── main.py         # 入口
+│   ├── requirements.txt
+│   └── .env.example
+├── frontend/               # 前端（React + TypeScript）
+│   ├── src/app/
+│   │   ├── api/            # API 层
+│   │   ├── pages/          # 页面组件（admin/teacher/student）
+│   │   ├── components/     # 共享组件
+│   │   └── context/        # Auth 上下文
+│   └── package.json
+├── pipelines/              # 开发期各模块独立管线（参考用）
+└── docs/                   # 项目文档
 ```
-
-## 技术栈
-
-### 前端
-- React 18 + TypeScript
-- Vite 构建工具
-- Tailwind CSS
-- Shadcn/ui 组件库
-
-### 后端
-- Python 3.12+
-- FastAPI
-- SQLAlchemy
-- PostgreSQL
-
-### AI/ML
-- OpenAI API
-- LangChain
-- ChromaDB（向量数据库）
-- 自定义 RAG 管道
 
 ## 快速开始
 
 ### 环境要求
+
 - Python 3.12+
-- Node.js 18+
-- PostgreSQL 15+
-- Redis（可选）
+- Node.js 18+ & pnpm
+- uv（Python 包管理，可选）
 
-### 安装步骤
+### 1. 后端
 
-1. 克隆仓库：
+> **系统依赖**：需要安装 `ffmpeg`（用于视频文件转写入库）。Ubuntu: `sudo apt install ffmpeg`，macOS: `brew install ffmpeg`。
+
 ```bash
-git clone https://github.com/bmacumt/courseagent.git
-cd courseagent
-```
+cd backend
 
-2. 设置 Python 环境：
-```bash
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# 或 venv\Scripts\activate  # Windows
+# 创建虚拟环境
+python -m venv .venv
+source .venv/bin/activate
+
+# 安装依赖
 pip install -r requirements.txt
+
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env，至少修改 SECRET_KEY
+
+# 启动
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-3. 设置前端：
+首次启动会自动：
+- 初始化 SQLite 数据库
+- 创建默认测试账号
+- 同步模型配置
+
+### 2. 前端
+
 ```bash
 cd frontend
-npm install
-npm run dev
+
+# 安装依赖
+pnpm install
+
+# 启动开发服务器
+pnpm dev
 ```
 
-4. 配置环境变量：
-```bash
-cp pipelines/01_auth/.env.example pipelines/01_auth/.env
-cp pipelines/03_rag/.env.example pipelines/03_rag/.env
-# 编辑 .env 文件，添加必要的 API 密钥和配置
-```
+访问 http://localhost:5173
 
-5. 启动后端服务：
-```bash
-cd pipelines/05_backend
-uvicorn server.main:app --reload
-```
+### 3. 配置模型
 
-## 使用说明
+后端启动后，登录管理员账号 → 侧边栏「模型管理」：
 
-### 教师功能
-- 创建和管理课程
-- 上传教学材料
-- 布置作业和评分标准
-- 查看学生提交和评分
-- 管理知识库
+1. 添加提供商（如 DeepSeek），填入 API Key 和 Base URL
+2. 配置各类型模型（chat / embedding / rerank）并设为默认
+3. 点击「验证」确认连通
 
-### 学生功能
-- 查看课程和作业
-- 提交作业答案
-- 查看评分和反馈
-- 使用智能问答系统
-- 跟踪学习进度
+模型配置存储在数据库中，无需手动编辑配置文件。
 
-### 管理员功能
-- 用户管理
-- 系统配置
-- 数据统计和分析
-- 系统监控
+### 测试账号
 
-## 开发指南
+| 角色 | 用户名 | 密码 |
+|------|--------|------|
+| 管理员 | admin | admin123 |
+| 教师 | teacher1 | teacher123 |
+| 学生 | student1 | student123 |
 
-### 代码规范
-- 使用 Black 进行 Python 代码格式化
-- 使用 ESLint 和 Prettier 进行前端代码格式化
-- 遵循 Git 提交规范
+## 功能概览
 
-### 测试
-```bash
-# 运行 Python 测试
-pytest
+### 管理员
+- 用户管理（增删改、批量导入学生）
+- 知识库浏览
+- 作业 & 提交管理
+- 模型配置（API Key、模型选择）
+- 学伴分析（查看所有学生能力画像）
 
-# 运行前端测试
-cd frontend
-npm test
-```
+### 教师
+- 知识库管理（上传文档、解析、查看分块）
+- 作业管理（创建、发布、设置评分维度）
+- 提交查看 & 评分报告 & CSV 导出
+- 学伴分析（查看本班学生能力画像）
 
-### 部署
+### 学生
+- 作业查看 & 提交
+- 评分报告查看（多维度得分、AI 反馈）
+- 知识问答（RAG 增强问答，支持流式输出）
+- 功能模块：报告诊断 / 全程学伴 / 课业评分 / 专业问答
+- 能力画像（雷达图、成绩趋势、AI 学习建议）
 
-#### Docker 部署
-```bash
-docker-compose up -d
-```
+## 部署
 
-#### 云部署
-- 支持部署到 AWS、Azure、GCP
-- 提供 Kubernetes 配置
-- 支持 CI/CD 流水线
-
+参见 [docs/deployment.md](docs/deployment.md)，推荐 Docker Compose + Nginx 方案。
