@@ -48,6 +48,17 @@ async def list_assignments(
     )
     assignments = result.scalars().all()
 
+    # Filter by target grade/class
+    filtered = []
+    for a in assignments:
+        if a.target_grade is None and a.target_classes is None:
+            filtered.append(a)
+        elif a.target_grade == current_user.grade:
+            classes = json.loads(a.target_classes) if a.target_classes else []
+            if not classes or (current_user.class_name and current_user.class_name in classes):
+                filtered.append(a)
+    assignments = filtered
+
     out = []
     for a in assignments:
         latest = await session.scalar(

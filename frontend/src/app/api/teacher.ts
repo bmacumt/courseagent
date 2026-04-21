@@ -10,6 +10,7 @@ import type {
   StudentProfileResponse,
   StudentListItem,
   ScoreDistributionResponse,
+  StudentsMetaResponse,
 } from './types';
 
 // Knowledge
@@ -130,6 +131,11 @@ function parseFilename(disposition: string | null): string {
 
 export async function getTeacherStudents(): Promise<StudentListItem[]> {
   const res = await client.get<StudentListItem[]>('/teacher/students');
+  return res.data;
+}
+
+export async function getStudentsMeta(): Promise<StudentsMetaResponse> {
+  const res = await client.get<StudentsMetaResponse>('/teacher/students/meta');
   return res.data;
 }
 

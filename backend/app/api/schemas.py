@@ -154,6 +154,8 @@ class CreateAssignmentRequest(BaseModel):
     reference_answer: str | None = None
     grading_criteria: GradingCriteriaInput | None = None
     deadline: datetime | None = None
+    target_grade: str | None = None
+    target_classes: list[str] | None = None
 
 class UpdateAssignmentRequest(BaseModel):
     title: str | None = None
@@ -162,6 +164,8 @@ class UpdateAssignmentRequest(BaseModel):
     reference_answer: str | None = None
     grading_criteria: GradingCriteriaInput | None = None
     deadline: datetime | None = None
+    target_grade: str | None = None
+    target_classes: list[str] | None = None
 
 class AssignmentResponse(BaseModel):
     id: int
@@ -173,9 +177,19 @@ class AssignmentResponse(BaseModel):
     grading_criteria: str  # JSON string
     deadline: datetime | None = None
     is_published: bool
+    target_grade: str | None = None
+    target_classes: list[str] | None = None
     created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+    @field_validator('target_classes', mode='before')
+    @classmethod
+    def parse_target_classes(cls, v):
+        if isinstance(v, str):
+            import json
+            return json.loads(v) if v else None
+        return v
 
 class AssignmentSummary(BaseModel):
     id: int

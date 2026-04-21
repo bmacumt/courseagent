@@ -23,6 +23,23 @@ async def init_db():
                     "ALTER TABLE users ADD COLUMN grade VARCHAR(20)"
                 )
             )
+        # Migration: add target_grade/target_classes to assignments
+        a_result = await conn.execute(
+            __import__('sqlalchemy').text("PRAGMA table_info(assignments)")
+        )
+        a_columns = [row[1] for row in a_result.fetchall()]
+        if 'target_grade' not in a_columns:
+            await conn.execute(
+                __import__('sqlalchemy').text(
+                    "ALTER TABLE assignments ADD COLUMN target_grade VARCHAR(20)"
+                )
+            )
+        if 'target_classes' not in a_columns:
+            await conn.execute(
+                __import__('sqlalchemy').text(
+                    "ALTER TABLE assignments ADD COLUMN target_classes TEXT"
+                )
+            )
 
 
 async def get_session():

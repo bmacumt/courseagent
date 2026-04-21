@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Plus, Edit2, Trash2, Send, Users, Clock, ChevronDown, ChevronUp, Minus } from 'lucide-react';
 import * as teacherApi from '../../api/teacher';
-import type { AssignmentSummary } from '../../api/types';
+import type { AssignmentSummary, StudentsMetaResponse } from '../../api/types';
 import { ConfirmDialog, Modal } from '../../components/shared/ConfirmDialog';
 import { PublishTag } from '../../components/shared/StatusTag';
 
@@ -65,6 +65,9 @@ export default function Assignments() {
   const [useCustomDims, setUseCustomDims] = useState(false);
   const [dimensions, setDimensions] = useState<Dimension[]>(defaultDimensions);
   const [formError, setFormError] = useState('');
+  const [targetGrade, setTargetGrade] = useState('');
+  const [targetClasses, setTargetClasses] = useState<string[]>([]);
+  const [studentsMeta, setStudentsMeta] = useState<StudentsMetaResponse | null>(null);
 
   const fetchAssignments = () => {
     teacherApi.getAssignments()
@@ -84,6 +87,8 @@ export default function Assignments() {
     setEditTarget(null);
     setTitle(''); setDescription(''); setQuestion(''); setRefAnswer(''); setDeadline('');
     setUseCustomDims(false); setDimensions(defaultDimensions); setFormError('');
+    setTargetGrade(''); setTargetClasses([]);
+    teacherApi.getStudentsMeta().then(setStudentsMeta).catch(() => {});
     setFormModal(true);
   };
 
@@ -92,6 +97,9 @@ export default function Assignments() {
     setTitle(a.title); setDescription(a.description || ''); setQuestion(a.question || '');
     setRefAnswer(a.reference_answer || ''); setDeadline(a.deadline ? a.deadline.slice(0, 16) : '');
     setUseCustomDims(false); setDimensions(defaultDimensions); setFormError('');
+    setTargetGrade((a as any).target_grade || '');
+    setTargetClasses((a as any).target_classes || []);
+    teacherApi.getStudentsMeta().then(setStudentsMeta).catch(() => {});
     setFormModal(true);
   };
 
@@ -113,6 +121,8 @@ export default function Assignments() {
       reference_answer: refAnswer || null,
       grading_criteria: criteria,
       deadline: deadline ? `${deadline}:00` : null,
+      target_grade: targetGrade || null,
+      target_classes: targetClasses.length > 0 ? targetClasses : null,
     };
     try {
       if (editTarget) {
@@ -261,6 +271,52 @@ export default function Assignments() {
         <FormField label="截止时间" hint="选填">
           <input type="datetime-local" value={deadline} onChange={e => setDeadline(e.target.value)} style={inputStyle} />
         </FormField>
+
+        {/* Target grade & classes */}
+        <div style={{ marginBottom: 18 }}>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#2C3E50', marginBottom: 6 }}>
+            发布范围 <span style={{ fontSize: 11, color: '#A4B0BE', fontWeight: 400, marginLeft: 6 }}>(不选则面向全部学生)</span>
+          </label>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <div style={{ flex: 1 }}>
+              <select
+                value={targetGrade}
+                onChange={e => { setTargetGrade(e.target.value); setTargetClasses([]); }}
+                style={{ ...inputStyle, cursor: 'pointer' }}
+              >
+                <option value="">全部年级</option>
+                {studentsMeta?.grades.map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
+            {targetGrade && studentsMeta?.classes_by_grade?.[targetGrade] && (
+              <div style={{ flex: 2, display: 'flex', flexWrap: 'wrap', gap: 8, padding: '6px 0' }}>
+                {studentsMeta.classes_by_grade[targetGrade].map(c => (
+                  <label key={c} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, color: '#2C3E50', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={targetClasses.includes(c)}
+                      onChange={e => {
+                        if (e.target.checked) setTargetClasses(prev => [...prev, c]);
+                        else setTargetClasses(prev => prev.filter(x => x !== c));
+                      }}
+                    />
+                    {c}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+          {targetGrade && targetClasses.length > 0 && (
+            <div style={{ marginTop: 6, fontSize: 12, color: '#6B9E7A' }}>
+              已选：{targetGrade} · {targetClasses.join('、')}
+            </div>
+          )}
+          {targetGrade && targetClasses.length === 0 && (
+            <div style={{ marginTop: 6, fontSize: 12, color: '#A4B0BE' }}>
+              未选班级，{targetGrade}全部班级可见
+            </div>
+          )}
+        </div>
 
         {/* Grading criteria */}
         <div style={{ marginBottom: 8 }}>

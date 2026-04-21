@@ -98,6 +98,8 @@ export interface AssignmentResponse {
   grading_criteria: string;
   deadline: string | null;
   is_published: boolean;
+  target_grade: string | null;
+  target_classes: string[] | null;
   created_at: string | null;
 }
 
@@ -112,6 +114,13 @@ export interface CreateAssignmentRequest {
     extra_instructions?: string | null;
   } | null;
   deadline?: string | null;
+  target_grade?: string | null;
+  target_classes?: string[] | null;
+}
+
+export interface StudentsMetaResponse {
+  grades: string[];
+  classes_by_grade: Record<string, string[]>;
 }
 
 // Student: Assignments

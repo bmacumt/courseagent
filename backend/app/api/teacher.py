@@ -224,6 +224,8 @@ async def create_assignment(
         reference_answer=req.reference_answer,
         grading_criteria=criteria_json,
         deadline=req.deadline,
+        target_grade=req.target_grade,
+        target_classes=json.dumps(req.target_classes, ensure_ascii=False) if req.target_classes else None,
     )
     session.add(assignment)
     await session.commit()
@@ -282,6 +284,10 @@ async def update_assignment(
         assignment.grading_criteria = _build_criteria_json(req.grading_criteria)
     if req.deadline is not None:
         assignment.deadline = req.deadline
+    if req.target_grade is not None:
+        assignment.target_grade = req.target_grade
+    if req.target_classes is not None:
+        assignment.target_classes = json.dumps(req.target_classes, ensure_ascii=False)
 
     await session.commit()
     await session.refresh(assignment)
@@ -541,6 +547,42 @@ async def export_grades(
         media_type="text/csv; charset=utf-8-sig",
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"},
     )
+
+
+# --- Student Metadata (年级/班级列表) ---
+
+@router.get("/students/meta")
+async def get_students_meta(
+    current_user: User = Depends(require_teacher),
+    session: AsyncSession = Depends(get_session),
+):
+    """Return distinct grades and classes for students who submitted to this teacher's assignments."""
+    result = await session.execute(
+        select(User.grade, User.class_name)
+        .join(Submission, Submission.student_id == User.id)
+        .join(Assignment, Assignment.id == Submission.assignment_id)
+        .where(Assignment.teacher_id == current_user.id, User.role == "student")
+        .distinct()
+    )
+    rows = result.all()
+
+    # Also get all students (even those without submissions) for broader targeting
+    all_students = await session.execute(
+        select(User.grade, User.class_name)
+        .where(User.role == "student", User.is_super == False)
+        .distinct()
+    )
+    all_rows = all_students.all()
+
+    grades = sorted(set(r[0] for r in all_rows if r[0]))
+    classes_by_grade: dict[str, list[str]] = {}
+    for g, c in all_rows:
+        if g and c:
+            classes_by_grade.setdefault(g, []).append(c)
+    for g in classes_by_grade:
+        classes_by_grade[g] = sorted(set(classes_by_grade[g]))
+
+    return {"grades": grades, "classes_by_grade": classes_by_grade}
 
 
 # --- Student Profile (学伴分析) ---

@@ -58,6 +58,8 @@ class Assignment(Base):
     grading_criteria: Mapped[str] = mapped_column(Text, nullable=False)
     deadline: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     is_published: Mapped[bool] = mapped_column(Boolean, default=False)
+    target_grade: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    target_classes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     teacher = relationship("User", back_populates="assignments")
