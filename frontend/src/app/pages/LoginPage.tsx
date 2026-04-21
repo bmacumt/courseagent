@@ -267,22 +267,6 @@ export default function LoginPage() {
                 </span>
               </div>
 
-              {/* Quick login hints */}
-              <div style={{ marginTop: 24, paddingTop: 24, borderTop: '1px solid #E8ECF0' }}>
-                <div style={{ fontSize: 12, color: '#A4B0BE', marginBottom: 12, textAlign: 'center' }}>演示账号（点击快速填入）</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {[
-                    { label: '管理员', user: 'admin', pass: 'admin123', color: '#4A6FA5', bg: '#EBF3FF' },
-                    { label: '教师', user: 'teacher1', pass: 'teacher123', color: '#6B8F71', bg: '#EDFAF2' },
-                    { label: '学生', user: 'student1', pass: 'student123', color: '#7A8F9E', bg: '#F0F2F5' },
-                  ].map(item => (
-                    <button key={item.label} onClick={() => quickLogin(item.user, item.pass)}
-                      style={{ flex: 1, padding: '8px 0', background: item.bg, color: item.color, border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </form>
           )}
 

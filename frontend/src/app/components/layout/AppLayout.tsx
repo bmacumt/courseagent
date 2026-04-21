@@ -155,16 +155,9 @@ export function AppLayout() {
         height: 64, padding: '0 16px', display: 'flex', alignItems: 'center', gap: 10,
         borderBottom: '1px solid rgba(255,255,255,0.07)', flexShrink: 0,
       }}>
-        <div style={{
-          width: 36, height: 36, background: '#4A6FA5', borderRadius: 8,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-        }}>
-          <span style={{ color: 'white', fontSize: 15, fontWeight: 700 }}>隧</span>
-        </div>
         {!collapsed && (
           <div style={{ overflow: 'hidden' }}>
-            <div style={{ color: '#FFFFFF', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>隧道工程课程</div>
-            <div style={{ color: '#A4B0BE', fontSize: 11, whiteSpace: 'nowrap' }}>智能体平台</div>
+            <div style={{ color: '#FFFFFF', fontSize: 15, fontWeight: 700, whiteSpace: 'nowrap' }}>DD筑巢人</div>
           </div>
         )}
       </div>

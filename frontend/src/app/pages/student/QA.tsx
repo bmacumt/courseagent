@@ -5,6 +5,7 @@ import * as studentApi from '../../api/student';
 import type { ConversationSummary } from '../../api/types';
 import { MarkdownRenderer } from '../../components/shared/MarkdownRenderer';
 import { ConfirmDialog } from '../../components/shared/ConfirmDialog';
+import agentAvatar from '../../../figure/Agent2.png';
 
 const DIAGNOSIS_PROMPT = `你是一位土木工程实验课的助教老师，负责在学生正式提交实验报告前，帮助他们发现问题并引导改进。
 
@@ -300,10 +301,10 @@ export default function QA() {
   };
 
   const suggestedQuestions = [
-    '公路建设板块包含哪些模块？',
     '隧道围岩分级的依据是什么？',
     '新奥法的核心原理是什么？',
-    '公路隧道防水设计要求有哪些？',
+    '隧道支护结构设计需要考虑哪些因素？',
+    '隧道施工中如何进行超前地质预报？',
   ];
 
   function formatResearchStatus(status: studentApi.ResearchStatusEvent): string {
@@ -353,9 +354,9 @@ export default function QA() {
         <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
           {messages.length === 0 && (
             <div style={{ textAlign: 'center', paddingTop: 80 }}>
-              <Bot size={48} color="#E8ECF0" style={{ margin: '0 auto 16px', display: 'block' }} />
-              <div style={{ fontSize: 17, fontWeight: 500, color: '#A4B0BE', marginBottom: 8 }}>开始提问</div>
-              <div style={{ fontSize: 13, color: '#C0C8D0', marginBottom: 32 }}>基于课程知识库，AI 将提供准确解答并标注来源</div>
+              <img src={agentAvatar} alt="DD筑巢人" style={{ width: 96, height: 96, borderRadius: '50%', margin: '0 auto 16px', display: 'block', objectFit: 'cover' }} />
+              <div style={{ fontSize: 17, fontWeight: 500, color: '#A4B0BE', marginBottom: 8 }}>DD筑巢人</div>
+              <div style={{ fontSize: 13, color: '#C0C8D0', marginBottom: 32 }}>我会基于知识库为您提供准确的学习指导，开始提问吧！</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
                 {suggestedQuestions.map(q => (
                   <button key={q} onClick={() => setInput(q)} style={{ padding: '8px 16px', border: '1px solid #E8ECF0', borderRadius: 20, background: '#F7F8FA', color: '#7F8C8D', cursor: 'pointer', fontSize: 14 }}>
@@ -373,7 +374,7 @@ export default function QA() {
                 background: msg.role === 'user' ? '#4A6FA5' : '#2C3A47',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                {msg.role === 'user' ? <User size={16} color="white" /> : <Bot size={16} color="white" />}
+                {msg.role === 'user' ? <User size={16} color="white" /> : <img src={agentAvatar} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} />}
               </div>
 
               <div style={{ maxWidth: '70%', display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
