@@ -1,7 +1,7 @@
 """Pydantic request/response schemas for all API endpoints."""
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # --- Auth ---
@@ -41,6 +41,7 @@ class UserResponse(BaseModel):
     real_name: str | None = None
     student_id: str | None = None
     class_name: str | None = None
+    grade: str | None = None
     email: str | None = None
     created_at: datetime | None = None
 
@@ -55,18 +56,42 @@ class CreateUserRequest(BaseModel):
     real_name: str | None = None
     student_id: str | None = None
     class_name: str | None = None
+    grade: str | None = None
     email: str | None = None
+
+    @field_validator('grade')
+    @classmethod
+    def validate_grade(cls, v):
+        if v is not None and v != '' and not v.endswith('级'):
+            raise ValueError('年级格式必须为"YYYY级"，例如"2024级"')
+        return v or None
 
 class UpdateUserRequest(BaseModel):
     real_name: str | None = None
     class_name: str | None = None
+    grade: str | None = None
     password: str | None = None
+
+    @field_validator('grade')
+    @classmethod
+    def validate_grade(cls, v):
+        if v is not None and v != '' and not v.endswith('级'):
+            raise ValueError('年级格式必须为"YYYY级"，例如"2024级"')
+        return v or None
 
 class BatchStudentItem(BaseModel):
     username: str
     real_name: str
     student_id: str
+    grade: str = ""
     class_name: str
+
+    @field_validator('grade')
+    @classmethod
+    def validate_grade(cls, v):
+        if v and not v.endswith('级'):
+            raise ValueError('年级格式必须为"YYYY级"，例如"2024级"')
+        return v or None
 
 class BatchStudentRequest(BaseModel):
     students: list[BatchStudentItem]
@@ -209,6 +234,7 @@ class SubmissionSummary(BaseModel):
     student_real_name: str | None = None
     student_id_field: str | None = None
     class_name: str | None = None
+    grade: str | None = None
     status: str
     submitted_at: datetime | None = None
     total_score: float | None = None
@@ -223,6 +249,7 @@ class SubmissionDetail(BaseModel):
     student_real_name: str | None = None
     student_id_field: str | None = None
     class_name: str | None = None
+    grade: str | None = None
     content: str
     has_attachment: bool = False
     attachment_filename: str | None = None
@@ -378,6 +405,7 @@ class StudentProfileResponse(BaseModel):
     student_name: str | None = None
     real_name: str | None = None
     class_name: str | None = None
+    grade: str | None = None
     total_submissions: int
     graded_submissions: int
     average_score: float
@@ -393,6 +421,7 @@ class StudentListItem(BaseModel):
     real_name: str | None = None
     student_id_field: str | None = None
     class_name: str | None = None
+    grade: str | None = None
     submission_count: int
     average_score: float
     dimension_averages: list[DimensionAverage] = []

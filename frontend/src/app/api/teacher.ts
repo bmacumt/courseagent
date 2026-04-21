@@ -9,6 +9,7 @@ import type {
   ReportResponse,
   StudentProfileResponse,
   StudentListItem,
+  ScoreDistributionResponse,
 } from './types';
 
 // Knowledge
@@ -134,5 +135,10 @@ export async function getTeacherStudents(): Promise<StudentListItem[]> {
 
 export async function getTeacherStudentProfile(studentId: number): Promise<StudentProfileResponse> {
   const res = await client.get<StudentProfileResponse>(`/teacher/students/${studentId}/profile`);
+  return res.data;
+}
+
+export async function getTeacherScoreDistribution(params?: { assignment_id?: number; grade?: string }): Promise<ScoreDistributionResponse> {
+  const res = await client.get<ScoreDistributionResponse>('/teacher/stats/score-distribution', { params });
   return res.data;
 }

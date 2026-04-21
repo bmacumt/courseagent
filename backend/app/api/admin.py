@@ -47,6 +47,7 @@ async def create_user(
         real_name=req.real_name,
         student_id=req.student_id,
         class_name=req.class_name,
+        grade=req.grade,
         email=req.email,
     )
     session.add(user)
@@ -84,6 +85,7 @@ async def batch_import_students(
                 is_registered=False,
                 real_name=s.real_name,
                 student_id=s.student_id,
+                grade=s.grade,
                 class_name=s.class_name,
             )
             session.add(user)
@@ -101,6 +103,7 @@ async def batch_import_students(
 async def list_users(
     role: str | None = None,
     class_name: str | None = None,
+    grade: str | None = None,
     current_user: User = Depends(require_admin),
     session: AsyncSession = Depends(get_session),
 ):
@@ -109,6 +112,8 @@ async def list_users(
         stmt = stmt.where(User.role == role)
     if class_name:
         stmt = stmt.where(User.class_name == class_name)
+    if grade:
+        stmt = stmt.where(User.grade == grade)
     result = await session.execute(stmt.order_by(User.id))
     return result.scalars().all()
 
@@ -128,6 +133,8 @@ async def update_user(
         user.real_name = req.real_name
     if req.class_name is not None:
         user.class_name = req.class_name
+    if req.grade is not None:
+        user.grade = req.grade
     if req.password is not None:
         user.password_hash = hash_password(req.password)
 
@@ -169,6 +176,48 @@ async def system_stats(
         total_assignments=assignments or 0,
         total_submissions=submissions or 0,
     )
+
+
+@router.get("/stats/score-distribution")
+async def score_distribution(
+    assignment_id: int | None = None,
+    grade: str | None = None,
+    current_user: User = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    """Score distribution grouped by grade, binned in 10-point ranges."""
+    stmt = (
+        select(Submission.student_id, Report.total_score)
+        .join(Report, Report.submission_id == Submission.id)
+        .where(Submission.status == "graded")
+    )
+    if assignment_id:
+        stmt = stmt.where(Submission.assignment_id == assignment_id)
+
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    # Bucket scores by student grade
+    buckets_map: dict[str, dict[str, int]] = defaultdict(lambda: {f"{i*10}-{(i+1)*10}": 0 for i in range(10)})
+    all_grades = set()
+
+    for student_id, score in rows:
+        user = await session.get(User, student_id)
+        g = user.grade if user and user.grade else "未设置"
+        if grade and g != grade:
+            continue
+        all_grades.add(g)
+        bucket_idx = min(int(score) // 10, 9)
+        bucket_key = f"{bucket_idx*10}-{(bucket_idx+1)*10}"
+        buckets_map[g][bucket_key] += 1
+
+    ranges = [f"{i*10}-{(i+1)*10}" for i in range(10)]
+    flat_buckets = []
+    for g in sorted(all_grades):
+        for r in ranges:
+            flat_buckets.append({"range": r, "count": buckets_map[g][r], "grade": g})
+
+    return {"buckets": flat_buckets, "grades": sorted(all_grades)}
 
 
 # --- Settings (Phase 5 merged) ---
@@ -301,6 +350,7 @@ async def admin_list_submissions(
             student_real_name=student.real_name if student else None,
             student_id_field=student.student_id if student else None,
             class_name=student.class_name if student else None,
+            grade=student.grade if student else None,
             status=s.status, submitted_at=s.submitted_at,
             total_score=report.total_score if report else None,
             has_attachment=s.attachment_path is not None,
@@ -326,6 +376,7 @@ async def admin_get_submission(
         student_real_name=student.real_name if student else None,
         student_id_field=student.student_id if student else None,
         class_name=student.class_name if student else None,
+        grade=student.grade if student else None,
         content=submission.content,
         has_attachment=submission.attachment_path is not None,
         attachment_filename=os.path.basename(submission.attachment_path).split("_", 1)[-1] if submission.attachment_path else None,
@@ -420,6 +471,7 @@ async def get_admin_student_profile(
         student_name=student.username,
         real_name=student.real_name,
         class_name=student.class_name,
+        grade=student.grade,
         total_submissions=profile["total_submissions"],
         graded_submissions=profile["graded_submissions"],
         average_score=profile["average_score"],

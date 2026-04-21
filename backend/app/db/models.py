@@ -22,6 +22,7 @@ class User(Base):
     real_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     student_id: Mapped[str | None] = mapped_column(String(50), nullable=True, unique=True)
     class_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    grade: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     documents = relationship("Document", back_populates="owner", lazy="selectin")

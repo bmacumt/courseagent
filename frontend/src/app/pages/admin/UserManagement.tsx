@@ -12,12 +12,13 @@ interface UserFormData {
   role: Role;
   real_name: string;
   student_id: string;
+  grade: string;
   class_name: string;
 }
 
 const emptyForm: UserFormData = {
   username: '', role: 'student',
-  real_name: '', student_id: '', class_name: '',
+  real_name: '', student_id: '', grade: '', class_name: '',
 };
 
 function FormField({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
@@ -42,6 +43,7 @@ export default function UserManagement() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<Role | 'all'>('all');
   const [classFilter, setClassFilter] = useState('');
+  const [gradeFilter, setGradeFilter] = useState('');
   const [page, setPage] = useState(1);
 
   const [editModal, setEditModal] = useState(false);
@@ -67,10 +69,12 @@ export default function UserManagement() {
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
   const classes = Array.from(new Set(users.filter(u => u.class_name).map(u => u.class_name!)));
+  const grades = Array.from(new Set(users.filter(u => u.grade).map(u => u.grade!)));
 
   const filtered = users.filter(u => {
     if (roleFilter !== 'all' && u.role !== roleFilter) return false;
     if (classFilter && u.class_name !== classFilter) return false;
+    if (gradeFilter && u.grade !== gradeFilter) return false;
     if (search && !`${u.username}${u.real_name}${u.student_id}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
@@ -86,7 +90,7 @@ export default function UserManagement() {
   };
   const openEdit = (u: UserResponse) => {
     setEditUser(u);
-    setForm({ username: u.username, role: u.role as Role, real_name: u.real_name || '', student_id: u.student_id || '', class_name: u.class_name || '' });
+    setForm({ username: u.username, role: u.role as Role, real_name: u.real_name || '', student_id: u.student_id || '', grade: u.grade || '', class_name: u.class_name || '' });
     setFormError('');
     setEditModal(true);
   };
@@ -99,6 +103,7 @@ export default function UserManagement() {
         await adminApi.updateUser(editUser.id, {
           real_name: form.real_name || undefined,
           class_name: form.class_name || undefined,
+          grade: form.grade || undefined,
         });
       } else {
         await adminApi.createUser({
@@ -107,6 +112,7 @@ export default function UserManagement() {
           real_name: form.real_name || null,
           student_id: form.student_id || null,
           class_name: form.class_name || null,
+          grade: form.grade || null,
         });
       }
       setEditModal(false);
@@ -130,11 +136,14 @@ export default function UserManagement() {
     const lines = csvText.trim().split('\n').filter(l => l.trim());
     const students = lines.map((line, i) => {
       const parts = line.split(/[,，\t]+|\s{2,}/).map(p => p.trim()).filter(Boolean);
+      // Support both 5-col (username,name,id,grade,class) and 4-col (username,name,id,class)
+      const hasGrade = parts.length >= 5;
       return {
         username: parts[0] || '',
         real_name: parts[1] || `学生${i + 1}`,
         student_id: parts[2] || `S${String(i + 1).padStart(3, '0')}`,
-        class_name: parts[3] || '未分班',
+        grade: hasGrade ? parts[3] : '',
+        class_name: hasGrade ? parts[4] : (parts[3] || '未分班'),
       };
     });
 
@@ -195,6 +204,10 @@ export default function UserManagement() {
           <option value="">全部班级</option>
           {classes.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
+        <select value={gradeFilter} onChange={e => { setGradeFilter(e.target.value); setPage(1); }} style={{ ...inputStyle, width: 110, height: 34, cursor: 'pointer' }}>
+          <option value="">全部年级</option>
+          {grades.map(g => <option key={g} value={g}>{g}</option>)}
+        </select>
         <span style={{ fontSize: 12, color: '#A4B0BE', marginLeft: 4 }}>共 {filtered.length} 条</span>
       </div>
 
@@ -203,7 +216,7 @@ export default function UserManagement() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#F7F8FA' }}>
-              {['姓名', '用户名', '角色', '学号（工号）', '班级', '注册状态', '操作'].map(h => (
+              {['姓名', '用户名', '角色', '学号（工号）', '年级', '班级', '注册状态', '操作'].map(h => (
                 <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#7F8C8D', borderBottom: '1px solid #F0F2F5' }}>{h}</th>
               ))}
             </tr>
@@ -224,6 +237,7 @@ export default function UserManagement() {
                 <td style={{ padding: '12px 16px', fontSize: 13, color: '#7F8C8D' }}>{u.username}</td>
                 <td style={{ padding: '12px 16px' }}><RoleTag role={u.role} /></td>
                 <td style={{ padding: '12px 16px', fontSize: 13, color: '#7F8C8D' }}>{u.student_id || '—'}</td>
+                <td style={{ padding: '12px 16px', fontSize: 13, color: '#7F8C8D' }}>{u.grade || '—'}</td>
                 <td style={{ padding: '12px 16px', fontSize: 13, color: '#7F8C8D' }}>{u.class_name || '—'}</td>
                 <td style={{ padding: '12px 16px', fontSize: 12, color: '#A4B0BE' }}>
                   {u.is_registered ? formatDate(u.created_at) : (
@@ -303,6 +317,11 @@ export default function UserManagement() {
           <input value={form.student_id} onChange={e => setForm(f => ({ ...f, student_id: e.target.value }))} style={inputStyle} placeholder={form.role === 'teacher' ? '工号（选填）' : '学号（选填）'} />
         </FormField>
         {form.role === 'student' && (
+          <FormField label="年级">
+            <input value={form.grade} onChange={e => setForm(f => ({ ...f, grade: e.target.value }))} style={inputStyle} placeholder="例如 2024级" />
+          </FormField>
+        )}
+        {form.role === 'student' && (
           <FormField label="班级">
             <input value={form.class_name} onChange={e => setForm(f => ({ ...f, class_name: e.target.value }))} style={inputStyle} placeholder="班级（选填）" />
           </FormField>
@@ -334,9 +353,9 @@ export default function UserManagement() {
         {!batchResult ? (
           <>
             <div style={{ fontSize: 13, color: '#7F8C8D', marginBottom: 12 }}>
-              每行格式：<code style={{ background: '#F7F8FA', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>用户名,姓名,学号,班级</code>
+              每行格式：<code style={{ background: '#F7F8FA', padding: '2px 6px', borderRadius: 4, fontSize: 12 }}>用户名,姓名,学号,年级,班级</code>
             </div>
-            <div style={{ fontSize: 12, color: '#A4B0BE', marginBottom: 12 }}>示例：2024001,张三,2024001,隧道一班（支持逗号、中文逗号、Tab分隔）</div>
+            <div style={{ fontSize: 12, color: '#A4B0BE', marginBottom: 12 }}>示例：2024001,张三,2024001,2024级,隧道一班（支持逗号、中文逗号、Tab分隔；也可省略年级只填4列）</div>
             <textarea
               value={csvText}
               onChange={e => setCsvText(e.target.value)}

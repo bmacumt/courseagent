@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
                 # 测试账号（交付时删除）
                 User(username="admin", password_hash=hash_password("admin123"), role="admin", real_name="测试管理员", is_registered=True),
                 User(username="teacher1", password_hash=hash_password("teacher123"), role="teacher", real_name="张老师", student_id="T001", is_registered=True),
-                User(username="student1", password_hash=hash_password("student123"), role="student", real_name="王同学", student_id="2024001", class_name="隧道一班", is_registered=True),
+                User(username="student1", password_hash=hash_password("student123"), role="student", real_name="王同学", student_id="2024001", class_name="隧道一班", grade="2024级", is_registered=True),
             ]
             for u in defaults:
                 session.add(u)

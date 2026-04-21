@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import uuid
+from collections import defaultdict
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse, StreamingResponse
@@ -352,6 +353,7 @@ async def list_submissions(
             student_real_name=student.real_name if student else None,
             student_id_field=student.student_id if student else None,
             class_name=student.class_name if student else None,
+            grade=student.grade if student else None,
             status=s.status,
             submitted_at=s.submitted_at,
             total_score=report.total_score if report else None,
@@ -436,6 +438,7 @@ async def get_submission_detail(
         student_real_name=student.real_name if student else None,
         student_id_field=student.student_id if student else None,
         class_name=student.class_name if student else None,
+        grade=student.grade if student else None,
         content=submission.content,
         has_attachment=submission.attachment_path is not None,
         attachment_filename=os.path.basename(submission.attachment_path).split("_", 1)[-1] if submission.attachment_path else None,
@@ -493,7 +496,7 @@ async def export_grades(
 
     output = io.StringIO()
     writer = csv.writer(output)
-    header = ["学号", "姓名", "班级", "提交状态", "总分"]
+    header = ["学号", "姓名", "年级", "班级", "提交状态", "总分"]
     for d in dims:
         header.append(d)
     header.extend(["评语", "提交时间"])
@@ -508,6 +511,7 @@ async def export_grades(
         row = [
             student.student_id if student else "",
             student.real_name if student else "",
+            student.grade if student else "",
             student.class_name if student else "",
             s.status,
             report.total_score if report else "",
@@ -540,6 +544,48 @@ async def export_grades(
 
 
 # --- Student Profile (学伴分析) ---
+
+
+@router.get("/stats/score-distribution")
+async def teacher_score_distribution(
+    assignment_id: int | None = None,
+    grade: str | None = None,
+    current_user: User = Depends(require_teacher),
+    session: AsyncSession = Depends(get_session),
+):
+    """Score distribution for this teacher's assignments, grouped by grade."""
+    stmt = (
+        select(Submission.student_id, Report.total_score)
+        .join(Report, Report.submission_id == Submission.id)
+        .join(Assignment, Assignment.id == Submission.assignment_id)
+        .where(Submission.status == "graded", Assignment.teacher_id == current_user.id)
+    )
+    if assignment_id:
+        stmt = stmt.where(Submission.assignment_id == assignment_id)
+
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    buckets_map: dict[str, dict[str, int]] = defaultdict(lambda: {f"{i*10}-{(i+1)*10}": 0 for i in range(10)})
+    all_grades = set()
+
+    for student_id, score in rows:
+        user = await session.get(User, student_id)
+        g = user.grade if user and user.grade else "未设置"
+        if grade and g != grade:
+            continue
+        all_grades.add(g)
+        bucket_idx = min(int(score) // 10, 9)
+        bucket_key = f"{bucket_idx*10}-{(bucket_idx+1)*10}"
+        buckets_map[g][bucket_key] += 1
+
+    ranges = [f"{i*10}-{(i+1)*10}" for i in range(10)]
+    flat_buckets = []
+    for g in sorted(all_grades):
+        for r in ranges:
+            flat_buckets.append({"range": r, "count": buckets_map[g][r], "grade": g})
+
+    return {"buckets": flat_buckets, "grades": sorted(all_grades)}
 
 @router.get("/students", response_model=list[StudentListItem])
 async def list_teacher_students(
@@ -574,6 +620,7 @@ async def get_teacher_student_profile(
         student_name=student.username if student else None,
         real_name=student.real_name if student else None,
         class_name=student.class_name if student else None,
+        grade=student.grade if student else None,
         total_submissions=profile["total_submissions"],
         graded_submissions=profile["graded_submissions"],
         average_score=profile["average_score"],

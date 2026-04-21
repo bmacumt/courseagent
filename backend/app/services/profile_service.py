@@ -273,6 +273,7 @@ async def list_students_with_stats(
             "real_name": user.real_name,
             "student_id_field": user.student_id,
             "class_name": user.class_name,
+            "grade": user.grade,
             "submission_count": len(data["scores"]),
             "average_score": avg,
             "dimension_averages": dim_avgs,

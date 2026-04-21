@@ -17,6 +17,7 @@ export interface UserResponse {
   real_name: string | null;
   student_id: string | null;
   class_name: string | null;
+  grade: string | null;
   email: string | null;
   created_at: string | null;
 }
@@ -28,12 +29,14 @@ export interface CreateUserRequest {
   real_name?: string | null;
   student_id?: string | null;
   class_name?: string | null;
+  grade?: string | null;
 }
 
 export interface BatchStudentItem {
   username: string;
   real_name: string;
   student_id: string;
+  grade: string;
   class_name: string;
 }
 
@@ -142,6 +145,7 @@ export interface SubmissionSummary {
   student_real_name: string | null;
   student_id_field: string | null;
   class_name: string | null;
+  grade: string | null;
   status: SubmissionStatus;
   submitted_at: string | null;
   total_score: number | null;
@@ -157,6 +161,7 @@ export interface SubmissionDetail {
   student_real_name: string | null;
   student_id_field: string | null;
   class_name: string | null;
+  grade: string | null;
   content: string;
   has_attachment: boolean;
   attachment_filename: string | null;
@@ -309,6 +314,7 @@ export interface StudentProfileResponse {
   student_name: string | null;
   real_name: string | null;
   class_name: string | null;
+  grade: string | null;
   total_submissions: number;
   graded_submissions: number;
   average_score: number;
@@ -325,7 +331,19 @@ export interface StudentListItem {
   real_name: string | null;
   student_id_field: string | null;
   class_name: string | null;
+  grade: string | null;
   submission_count: number;
   average_score: number;
   dimension_averages: DimensionAverage[];
+}
+
+export interface ScoreBucket {
+  range: string;
+  count: number;
+  grade: string | null;
+}
+
+export interface ScoreDistributionResponse {
+  buckets: ScoreBucket[];
+  grades: string[];
 }

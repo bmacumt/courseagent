@@ -86,7 +86,7 @@ export default function StudentProfile() {
           </h1>
           {isOtherView && (
             <p style={{ fontSize: 13, color: '#7F8C8D' }}>
-              {profile.class_name && `${profile.class_name} · `}已提交 {profile.graded_submissions} 份作业
+              {profile.grade && `${profile.grade} · `}{profile.class_name && `${profile.class_name} · `}已提交 {profile.graded_submissions} 份作业
             </p>
           )}
         </div>

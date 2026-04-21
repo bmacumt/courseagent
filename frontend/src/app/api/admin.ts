@@ -13,9 +13,10 @@ import type {
   ReportResponse,
   StudentProfileResponse,
   StudentListItem,
+  ScoreDistributionResponse,
 } from './types';
 
-export async function getUsers(params?: { role?: string; class_name?: string }): Promise<UserResponse[]> {
+export async function getUsers(params?: { role?: string; class_name?: string; grade?: string }): Promise<UserResponse[]> {
   const res = await client.get<UserResponse[]>('/admin/users', { params });
   return res.data;
 }
@@ -25,7 +26,7 @@ export async function createUser(data: CreateUserRequest): Promise<UserResponse>
   return res.data;
 }
 
-export async function updateUser(id: number, data: { real_name?: string; class_name?: string; password?: string }): Promise<UserResponse> {
+export async function updateUser(id: number, data: { real_name?: string; class_name?: string; grade?: string; password?: string }): Promise<UserResponse> {
   const res = await client.put<UserResponse>(`/admin/users/${id}`, data);
   return res.data;
 }
@@ -92,5 +93,10 @@ export async function getAdminStudents(): Promise<StudentListItem[]> {
 
 export async function getAdminStudentProfile(studentId: number): Promise<StudentProfileResponse> {
   const res = await client.get<StudentProfileResponse>(`/admin/students/${studentId}/profile`);
+  return res.data;
+}
+
+export async function getScoreDistribution(params?: { assignment_id?: number; grade?: string }): Promise<ScoreDistributionResponse> {
+  const res = await client.get<ScoreDistributionResponse>('/admin/stats/score-distribution', { params });
   return res.data;
 }

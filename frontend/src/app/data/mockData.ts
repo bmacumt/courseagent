@@ -10,6 +10,7 @@ export interface User {
   real_name: string | null;
   student_id: string | null;
   class_name: string | null;
+  grade: string | null;
   created_at: string;
 }
 
@@ -107,15 +108,15 @@ export const mockUsers: User[] = [
   { id: 1, username: 'admin', role: 'admin', real_name: '系统管理员', student_id: null, class_name: null, created_at: '2026-04-01T08:00:00' },
   { id: 2, username: 'teacher_zhang', role: 'teacher', real_name: '张明', student_id: null, class_name: null, created_at: '2026-04-02T09:00:00' },
   { id: 3, username: 'teacher_li', role: 'teacher', real_name: '李萍', student_id: null, class_name: null, created_at: '2026-04-02T09:30:00' },
-  { id: 4, username: 'stu_001', role: 'student', real_name: '王浩', student_id: '2024001', class_name: '隧道一班', created_at: '2026-04-05T10:00:00' },
-  { id: 5, username: 'stu_002', role: 'student', real_name: '李梅', student_id: '2024002', class_name: '隧道一班', created_at: '2026-04-05T10:05:00' },
-  { id: 6, username: 'stu_003', role: 'student', real_name: '赵强', student_id: '2024003', class_name: '隧道一班', created_at: '2026-04-05T10:10:00' },
-  { id: 7, username: 'stu_004', role: 'student', real_name: '陈思', student_id: '2024004', class_name: '隧道二班', created_at: '2026-04-05T10:15:00' },
-  { id: 8, username: 'stu_005', role: 'student', real_name: '刘洋', student_id: '2024005', class_name: '隧道二班', created_at: '2026-04-05T10:20:00' },
-  { id: 9, username: 'stu_006', role: 'student', real_name: '周华', student_id: '2024006', class_name: '隧道二班', created_at: '2026-04-05T10:25:00' },
-  { id: 10, username: 'stu_007', role: 'student', real_name: '吴雪', student_id: '2024007', class_name: '隧道一班', created_at: '2026-04-05T10:30:00' },
-  { id: 11, username: 'stu_008', role: 'student', real_name: '郑阳', student_id: '2024008', class_name: '隧道一班', created_at: '2026-04-05T10:35:00' },
-  { id: 12, username: 'stu_009', role: 'student', real_name: '冯磊', student_id: '2024009', class_name: '隧道二班', created_at: '2026-04-05T10:40:00' },
+  { id: 4, username: 'stu_001', role: 'student', real_name: '王浩', student_id: '2024001', grade: '2024级', class_name: '隧道一班', created_at: '2026-04-05T10:00:00' },
+  { id: 5, username: 'stu_002', role: 'student', real_name: '李梅', student_id: '2024002', grade: '2024级', class_name: '隧道一班', created_at: '2026-04-05T10:05:00' },
+  { id: 6, username: 'stu_003', role: 'student', real_name: '赵强', student_id: '2024003', grade: '2024级', class_name: '隧道一班', created_at: '2026-04-05T10:10:00' },
+  { id: 7, username: 'stu_004', role: 'student', real_name: '陈思', student_id: '2024004', grade: '2024级', class_name: '隧道二班', created_at: '2026-04-05T10:15:00' },
+  { id: 8, username: 'stu_005', role: 'student', real_name: '刘洋', student_id: '2024005', grade: '2024级', class_name: '隧道二班', created_at: '2026-04-05T10:20:00' },
+  { id: 9, username: 'stu_006', role: 'student', real_name: '周华', student_id: '2024006', grade: '2024级', class_name: '隧道二班', created_at: '2026-04-05T10:25:00' },
+  { id: 10, username: 'stu_007', role: 'student', real_name: '吴雪', student_id: '2024007', grade: '2025级', class_name: '隧道一班', created_at: '2026-04-05T10:30:00' },
+  { id: 11, username: 'stu_008', role: 'student', real_name: '郑阳', student_id: '2024008', grade: '2025级', class_name: '隧道一班', created_at: '2026-04-05T10:35:00' },
+  { id: 12, username: 'stu_009', role: 'student', real_name: '冯磊', student_id: '2024009', grade: '2025级', class_name: '隧道二班', created_at: '2026-04-05T10:40:00' },
 ];
 
 export const mockDocuments: Document[] = [

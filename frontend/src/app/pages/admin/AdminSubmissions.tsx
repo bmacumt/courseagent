@@ -120,7 +120,7 @@ export default function AdminSubmissions() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#F7F8FA' }}>
-              {['学生姓名', '学号', '班级', '提交时间', '状态', '总分', '附件', '操作'].map(h => (
+              {['学生姓名', '学号', '年级', '班级', '提交时间', '状态', '总分', '附件', '操作'].map(h => (
                 <th key={h} style={{ padding: '12px 18px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#7F8C8D', borderBottom: '1px solid #F0F2F5' }}>{h}</th>
               ))}
             </tr>
@@ -139,6 +139,7 @@ export default function AdminSubmissions() {
                   </div>
                 </td>
                 <td style={{ padding: '14px 18px', fontSize: 13, color: '#7F8C8D' }}>{sub.student_id_field || '—'}</td>
+                <td style={{ padding: '14px 18px', fontSize: 13, color: '#7F8C8D' }}>{sub.grade || '—'}</td>
                 <td style={{ padding: '14px 18px', fontSize: 13, color: '#7F8C8D' }}>{sub.class_name || '—'}</td>
                 <td style={{ padding: '14px 18px', fontSize: 13, color: '#7F8C8D' }}>{formatTime(sub.submitted_at)}</td>
                 <td style={{ padding: '14px 18px' }}><StatusTag status={sub.status} /></td>
@@ -184,6 +185,7 @@ export default function AdminSubmissions() {
           <div>
             <div style={{ display: 'flex', gap: 16, marginBottom: 16, fontSize: 13, color: '#7F8C8D' }}>
               {preview.student_id_field && <span>学号: {preview.student_id_field}</span>}
+              {preview.grade && <span>年级: {preview.grade}</span>}
               {preview.class_name && <span>班级: {preview.class_name}</span>}
               <span>状态: {preview.status}</span>
               {preview.submitted_at && <span>提交于: {formatTime(preview.submitted_at)}</span>}

@@ -77,7 +77,7 @@ export default function AdminDashboard() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 500, color: '#2C3E50' }}>{u.real_name || u.username}</div>
-                  <div style={{ fontSize: 12, color: '#7F8C8D' }}>{u.class_name || (u.role === 'teacher' ? '教师' : '管理员')}</div>
+                  <div style={{ fontSize: 12, color: '#7F8C8D' }}>{u.grade && `${u.grade} · `}{u.class_name || (u.role === 'teacher' ? '教师' : '管理员')}</div>
                 </div>
                 <span style={{
                   fontSize: 11, padding: '2px 8px', borderRadius: 3,

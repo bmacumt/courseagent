@@ -12,6 +12,17 @@ async def init_db():
     from app.db.models import Base
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Migration: add grade column if not exists (for existing databases)
+        result = await conn.execute(
+            __import__('sqlalchemy').text("PRAGMA table_info(users)")
+        )
+        columns = [row[1] for row in result.fetchall()]
+        if 'grade' not in columns:
+            await conn.execute(
+                __import__('sqlalchemy').text(
+                    "ALTER TABLE users ADD COLUMN grade VARCHAR(20)"
+                )
+            )
 
 
 async def get_session():

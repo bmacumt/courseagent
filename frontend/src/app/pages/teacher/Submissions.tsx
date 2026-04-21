@@ -204,6 +204,7 @@ export default function Submissions() {
             {/* Student info */}
             <div style={{ display: 'flex', gap: 16, marginBottom: 16, fontSize: 13, color: '#7F8C8D' }}>
               {preview.student_id_field && <span>学号: {preview.student_id_field}</span>}
+              {preview.grade && <span>年级: {preview.grade}</span>}
               {preview.class_name && <span>班级: {preview.class_name}</span>}
               <span>状态: {preview.status}</span>
               {preview.submitted_at && <span>提交于: {formatTime(preview.submitted_at)}</span>}
