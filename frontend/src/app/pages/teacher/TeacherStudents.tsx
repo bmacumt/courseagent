@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router';
 import { User, Loader2, TrendingUp, BarChart3 } from 'lucide-react';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from 'recharts';
 import * as teacherApi from '../../api/teacher';
-import type { StudentListItem, AssignmentSummary, ScoreDistributionResponse } from '../../api/types';
+import type { StudentListItem, AssignmentSummary, ScoreDistributionResponse, GradeComparisonItem } from '../../api/types';
 import ScoreDistributionChart from '../../components/shared/ScoreDistributionChart';
+import GradeComparisonChart from '../../components/shared/GradeComparisonChart';
 
 export default function TeacherStudents() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function TeacherStudents() {
   const [selectedGrade, setSelectedGrade] = useState<string>('');
   const [distData, setDistData] = useState<ScoreDistributionResponse | null>(null);
   const [distLoading, setDistLoading] = useState(false);
+  const [gradeCompData, setGradeCompData] = useState<GradeComparisonItem[]>([]);
 
   const loadDistribution = useCallback(async () => {
     setDistLoading(true);
@@ -25,8 +27,13 @@ export default function TeacherStudents() {
       if (selectedGrade) params.grade = selectedGrade;
       const data = await teacherApi.getTeacherScoreDistribution(params);
       setDistData(data);
+      const compParams: { assignment_id?: number } = {};
+      if (selectedAssignment) compParams.assignment_id = selectedAssignment as number;
+      const compData = await teacherApi.getTeacherGradeComparison(compParams);
+      setGradeCompData(compData);
     } catch {
       setDistData(null);
+      setGradeCompData([]);
     } finally {
       setDistLoading(false);
     }
@@ -105,6 +112,16 @@ export default function TeacherStudents() {
           ) : (
             <div style={{ textAlign: 'center', padding: 32, color: '#A4B0BE' }}>暂无数据</div>
           )}
+
+        {/* Grade comparison chart */}
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#2C3E50', marginBottom: 12 }}>年级对比</div>
+          {distLoading ? (
+            <div style={{ textAlign: 'center', padding: 32, color: '#A4B0BE' }}>加载中...</div>
+          ) : (
+            <GradeComparisonChart data={gradeCompData} />
+          )}
+        </div>
         </div>
       )}
 

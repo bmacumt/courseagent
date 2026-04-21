@@ -357,3 +357,10 @@ export interface ScoreDistributionResponse {
   buckets: ScoreBucket[];
   grades: string[];
 }
+
+export interface GradeComparisonItem {
+  grade: string;
+  avg_score: number;
+  low_rate: number;
+  total_count: number;
+}

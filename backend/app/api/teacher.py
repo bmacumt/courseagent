@@ -629,6 +629,45 @@ async def teacher_score_distribution(
 
     return {"buckets": flat_buckets, "grades": sorted(all_grades)}
 
+
+@router.get("/stats/grade-comparison")
+async def teacher_grade_comparison(
+    assignment_id: int | None = None,
+    current_user: User = Depends(require_teacher),
+    session: AsyncSession = Depends(get_session),
+):
+    """Average score and low-score rate (<60) per grade for this teacher's assignments."""
+    stmt = (
+        select(Submission.student_id, Report.total_score)
+        .join(Report, Report.submission_id == Submission.id)
+        .join(Assignment, Assignment.id == Submission.assignment_id)
+        .where(Submission.status == "graded", Assignment.teacher_id == current_user.id)
+    )
+    if assignment_id:
+        stmt = stmt.where(Submission.assignment_id == assignment_id)
+
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    grade_scores: dict[str, list[float]] = defaultdict(list)
+    for student_id, score in rows:
+        user = await session.get(User, student_id)
+        g = user.grade if user and user.grade else "未设置"
+        grade_scores[g].append(float(score))
+
+    if not grade_scores:
+        return []
+
+    items = []
+    for g in sorted(grade_scores):
+        scores = grade_scores[g]
+        avg = round(sum(scores) / len(scores), 1)
+        low_count = sum(1 for s in scores if s < 60)
+        low_rate = round(low_count / len(scores) * 100, 1)
+        items.append({"grade": g, "avg_score": avg, "low_rate": low_rate, "total_count": len(scores)})
+    return items
+
+
 @router.get("/students", response_model=list[StudentListItem])
 async def list_teacher_students(
     current_user: User = Depends(require_teacher),

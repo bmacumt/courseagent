@@ -14,6 +14,7 @@ import type {
   StudentProfileResponse,
   StudentListItem,
   ScoreDistributionResponse,
+  GradeComparisonItem,
 } from './types';
 
 export async function getUsers(params?: { role?: string; class_name?: string; grade?: string }): Promise<UserResponse[]> {
@@ -98,5 +99,10 @@ export async function getAdminStudentProfile(studentId: number): Promise<Student
 
 export async function getScoreDistribution(params?: { assignment_id?: number; grade?: string }): Promise<ScoreDistributionResponse> {
   const res = await client.get<ScoreDistributionResponse>('/admin/stats/score-distribution', { params });
+  return res.data;
+}
+
+export async function getGradeComparison(params?: { assignment_id?: number }): Promise<GradeComparisonItem[]> {
+  const res = await client.get<GradeComparisonItem[]>('/admin/stats/grade-comparison', { params });
   return res.data;
 }

@@ -11,6 +11,7 @@ import type {
   StudentListItem,
   ScoreDistributionResponse,
   StudentsMetaResponse,
+  GradeComparisonItem,
 } from './types';
 
 // Knowledge
@@ -146,5 +147,10 @@ export async function getTeacherStudentProfile(studentId: number): Promise<Stude
 
 export async function getTeacherScoreDistribution(params?: { assignment_id?: number; grade?: string }): Promise<ScoreDistributionResponse> {
   const res = await client.get<ScoreDistributionResponse>('/teacher/stats/score-distribution', { params });
+  return res.data;
+}
+
+export async function getTeacherGradeComparison(params?: { assignment_id?: number }): Promise<GradeComparisonItem[]> {
+  const res = await client.get<GradeComparisonItem[]>('/teacher/stats/grade-comparison', { params });
   return res.data;
 }
