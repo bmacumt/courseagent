@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Clock, User, CheckCircle, ChevronRight } from 'lucide-react';
+import { Clock, User, CheckCircle, ChevronRight, AlertTriangle, RefreshCw } from 'lucide-react';
 import * as studentApi from '../../api/student';
 import type { StudentAssignment } from '../../api/types';
 
@@ -32,7 +32,8 @@ export default function AssignmentList() {
   };
 
   const pending = assignments.filter(a => !a.has_submitted);
-  const completed = assignments.filter(a => a.has_submitted);
+  const failed = assignments.filter(a => a.has_submitted && a.latest_status === 'failed');
+  const completed = assignments.filter(a => a.has_submitted && a.latest_status !== 'failed');
 
   if (loading) {
     return <div style={{ textAlign: 'center', padding: 64, color: '#A4B0BE', fontSize: 14 }}>加载中...</div>;
@@ -89,6 +90,60 @@ export default function AssignmentList() {
                       }}
                     >
                       去答题 <ChevronRight size={15} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {failed.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <div style={{ width: 4, height: 16, background: '#C46B6B', borderRadius: 2 }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#2C3E50' }}>评分失败</span>
+            <span style={{ background: '#FFEAEA', color: '#C46B6B', borderRadius: 12, padding: '1px 8px', fontSize: 12 }}>{failed.length}</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 14 }}>
+            {failed.map(a => {
+              const dl = formatDeadline(a.deadline);
+              return (
+                <div key={a.id} style={{
+                  background: '#FFFFFF', borderRadius: 10, border: '1px solid #FFCCCC',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)', overflow: 'hidden',
+                }}>
+                  <div style={{ height: 4, background: '#C46B6B' }} />
+                  <div style={{ padding: '18px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{ fontSize: 15, fontWeight: 600, color: '#2C3E50' }}>{a.title}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#FFEAEA', color: '#C46B6B', borderRadius: 4, padding: '2px 8px', fontSize: 12 }}>
+                        <AlertTriangle size={11} /> 评分失败
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13, color: '#7F8C8D', lineHeight: 1.6, marginBottom: 14, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {a.description}
+                    </div>
+                    <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#A4B0BE', marginBottom: 16 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <User size={12} /> {a.teacher_name}
+                      </span>
+                      {dl && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: dl.color }}>
+                          <Clock size={12} /> {dl.label}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => navigate(`/student/assignments/${a.id}/submit`)}
+                      style={{
+                        width: '100%', padding: '9px 0', border: 'none', borderRadius: 7,
+                        background: '#D4A843', color: '#FFFFFF', cursor: 'pointer', fontSize: 14,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      }}
+                    >
+                      <RefreshCw size={14} /> 重新提交
                     </button>
                   </div>
                 </div>

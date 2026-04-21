@@ -123,6 +123,7 @@ export interface StudentAssignment {
   deadline: string | null;
   teacher_name: string | null;
   has_submitted: boolean;
+  latest_status: string | null;
 }
 
 export interface AssignmentDetail {

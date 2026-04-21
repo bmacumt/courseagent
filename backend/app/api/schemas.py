@@ -198,6 +198,7 @@ class AssignmentForStudent(BaseModel):
     deadline: datetime | None = None
     teacher_name: str | None = None
     has_submitted: bool = False
+    latest_status: str | None = None
 
 class AssignmentDetail(BaseModel):
     id: int

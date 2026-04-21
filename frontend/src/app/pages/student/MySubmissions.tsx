@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { RefreshCw, Download, Paperclip, ExternalLink, Info } from 'lucide-react';
+import { RefreshCw, Download, Paperclip, ExternalLink, Info, RotateCcw } from 'lucide-react';
 import * as studentApi from '../../api/student';
 import type { SubmissionSummary } from '../../api/types';
 import { StatusTag } from '../../components/shared/StatusTag';
@@ -156,6 +156,14 @@ export default function MySubmissions() {
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                {sub.status === 'failed' && (
+                  <button
+                    onClick={() => navigate(`/student/assignments/${sub.assignment_id}/submit`)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 14px', border: 'none', borderRadius: 6, background: '#D4A843', color: '#FFFFFF', cursor: 'pointer', fontSize: 13 }}
+                  >
+                    <RotateCcw size={13} /> 重新提交
+                  </button>
+                )}
                 {sub.has_attachment && (
                   <button
                     onClick={() => handleDownloadAttachment(sub.id)}

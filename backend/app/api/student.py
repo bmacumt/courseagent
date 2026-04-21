@@ -62,6 +62,7 @@ async def list_assignments(
             question=a.question, deadline=a.deadline,
             teacher_name=teacher.real_name or teacher.username if teacher else None,
             has_submitted=latest is not None,
+            latest_status=latest.status if latest else None,
         ))
     return out
 

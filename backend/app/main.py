@@ -30,7 +30,18 @@ async def lifespan(app: FastAPI):
                 # 测试账号（交付时删除）
                 User(username="admin", password_hash=hash_password("admin123"), role="admin", real_name="测试管理员", is_registered=True),
                 User(username="teacher1", password_hash=hash_password("teacher123"), role="teacher", real_name="张老师", student_id="T001", is_registered=True),
-                User(username="student1", password_hash=hash_password("student123"), role="student", real_name="王同学", student_id="2024001", class_name="隧道一班", grade="2024级", is_registered=True),
+                # 2024级 隧道一班
+                User(username="2024001", password_hash=hash_password("stu2024"), role="student", real_name="王浩", student_id="2024001", class_name="隧道一班", grade="2024级", is_registered=True),
+                User(username="2024002", password_hash=hash_password("stu2024"), role="student", real_name="李梅", student_id="2024002", class_name="隧道一班", grade="2024级", is_registered=True),
+                User(username="2024003", password_hash=hash_password("stu2024"), role="student", real_name="赵强", student_id="2024003", class_name="隧道一班", grade="2024级", is_registered=True),
+                # 2024级 隧道二班
+                User(username="2024004", password_hash=hash_password("stu2024"), role="student", real_name="陈思", student_id="2024004", class_name="隧道二班", grade="2024级", is_registered=True),
+                User(username="2024005", password_hash=hash_password("stu2024"), role="student", real_name="刘洋", student_id="2024005", class_name="隧道二班", grade="2024级", is_registered=True),
+                # 2025级 隧道一班
+                User(username="2025001", password_hash=hash_password("stu2025"), role="student", real_name="张雪", student_id="2025001", class_name="隧道一班", grade="2025级", is_registered=True),
+                User(username="2025002", password_hash=hash_password("stu2025"), role="student", real_name="杨帆", student_id="2025002", class_name="隧道一班", grade="2025级", is_registered=True),
+                # 2025级 隧道二班
+                User(username="2025003", password_hash=hash_password("stu2025"), role="student", real_name="周明", student_id="2025003", class_name="隧道二班", grade="2025级", is_registered=True),
             ]
             for u in defaults:
                 session.add(u)
